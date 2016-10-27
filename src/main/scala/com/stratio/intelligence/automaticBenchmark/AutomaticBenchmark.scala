@@ -18,7 +18,9 @@ object AutomaticBenchmark extends App {
   //  data.take(10).foreach(println)
 
   // Data files and description files
-/*    val datafile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit-cards-no-header.data"
+/*
+    // HDFS data files
+    val datafile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit-cards-no-header.data"
     val descriptionfile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit.description"
 
     val datafile2 = "hdfs://144.76.3.23:54310/data/benchmarks/bank/bank.csv"
@@ -34,20 +36,16 @@ object AutomaticBenchmark extends App {
     val descriptionfile5 = "hdfs://144.76.3.23:54310/data/benchmarks/pima-indians/pima-indians-full.description"
     */
 
-  // val datafile1 = "./src/main/resources/diagnosis.data2.csv"
-  // val descriptionfile1 = "./src/main/resources/diagnosis.data.description"
+  // LOCAL data files
+  val datafile1 = "./src/main/resources/diagnosis.csv"
+  val descriptionfile1 = "./src/main/resources/diagnosis.description"
 
-  val datafile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit-cards-no-header.data"
-  val descriptionfile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit.description"
-
-  val datafile2 = "./src/main/resources/diagnosis.data.csv"
-  val descriptionfile2 = "./src/main/resources/diagnosis.data.description2"
 
   // New Automatic Bechmark Machine
     val abm = new AutomaticBenchmarkMachine(sqlContext)
 
     abm.run(
-      dataAndDescriptionFiles = Array((datafile1,descriptionfile1), (datafile2,descriptionfile2)),
+      dataAndDescriptionFiles = Array((datafile1,descriptionfile1) ),
       outputFile = "myoutput.txt",
       seed = 11,
       kfolds = 3,

@@ -46,15 +46,17 @@ object DatasetReader {
       StructField("colName", StringType, true),
       StructField("type", StringType, true)
     ))
-    val description = sqlContext.read.format("com.databricks.spark.csv").option("header", "false").
+    val descriptionDf = sqlContext.read.format("com.databricks.spark.csv").option("header", "false").
       schema(dictionarySchema).load(file)
+
+    descriptionDf.show()
 
     var flagCategorical = false // whether there exist categorical columns in this dataset or not
 
-    val myclassColumn = description.head(1)(0)(1).toString // second column of the first row -> class column
-    val mypositiveLabel = description.head(2)(1)(1).toString // second column of the second row -> positive label
+    val myclassColumn = descriptionDf.head(1)(0)(1).toString // second column of the first row -> class column
+    val mypositiveLabel = descriptionDf.head(2)(1)(1).toString // second column of the second row -> positive label
     val myrddStructField =
-      description.map {
+      descriptionDf.map {
         x =>
           if (x.getString(0) != "classcolumn" && x.getString(0) != "positivelabel") {
             val colname = x.getString(0)
