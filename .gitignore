@@ -1,6 +1,5 @@
-/AutomaticBenchmark.iml
 .idea/
-AutomaticBenchmark.iml
 myoutput.txt
 /target
 /target/*
+*.iml
