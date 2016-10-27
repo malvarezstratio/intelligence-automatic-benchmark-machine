@@ -14,26 +14,23 @@ object AutomaticBenchmark extends App {
   val sqlContext = new SQLContext(sc)
 
 
-  // val data: RDD[String] = sc.textFile("hdfs://144.76.3.23:54310/data/benchmarks/bank/bank.description")
-  //  data.take(10).foreach(println)
-
   // Data files and description files
-/*
+  /*
     // HDFS data files
-    val datafile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit-cards-no-header.data"
-    val descriptionfile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit.description"
+      val datafile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit-cards-no-header.data"
+      val descriptionfile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit.description"
 
-    val datafile2 = "hdfs://144.76.3.23:54310/data/benchmarks/bank/bank.csv"
-    val descriptionfile2 = "hdfs://144.76.3.23:54310/data/benchmarks/bank/bank.description"
+      val datafile2 = "hdfs://144.76.3.23:54310/data/benchmarks/bank/bank.csv"
+      val descriptionfile2 = "hdfs://144.76.3.23:54310/data/benchmarks/bank/bank.description"
 
-    val datafile3 = "hdfs://144.76.3.23:54310/data/benchmarks/adults/adults-labeled.csv"
-    val descriptionfile3 = "hdfs://144.76.3.23:54310/data/benchmarks/adults/adults.description"
+      val datafile3 = "hdfs://144.76.3.23:54310/data/benchmarks/adults/adults-labeled.csv"
+      val descriptionfile3 = "hdfs://144.76.3.23:54310/data/benchmarks/adults/adults.description"
 
-    val datafile4 = "hdfs://144.76.3.23:54310/data/benchmarks/bikes/bikes_bien2_comas.csv"
-    val descriptionfile4 = "hdfs://144.76.3.23:54310/data/benchmarks/bikes/bikes_bien2_comas.description"
+      val datafile4 = "hdfs://144.76.3.23:54310/data/benchmarks/bikes/bikes_bien2_comas.csv"
+      val descriptionfile4 = "hdfs://144.76.3.23:54310/data/benchmarks/bikes/bikes_bien2_comas.description"
 
-    val datafile5 = "hdfs://144.76.3.23:54310/data/benchmarks/pima-indians/pima-indians-full.csv"
-    val descriptionfile5 = "hdfs://144.76.3.23:54310/data/benchmarks/pima-indians/pima-indians-full.description"
+      val datafile5 = "hdfs://144.76.3.23:54310/data/benchmarks/pima-indians/pima-indians-full.csv"
+      val descriptionfile5 = "hdfs://144.76.3.23:54310/data/benchmarks/pima-indians/pima-indians-full.description"
     */
 
   // LOCAL data files
@@ -43,7 +40,9 @@ object AutomaticBenchmark extends App {
 
   // New Automatic Bechmark Machine
     val abm = new AutomaticBenchmarkMachine(sqlContext)
+    abm.enableDebugMode()
 
+  // Executing the benchmarking process
     abm.run(
       dataAndDescriptionFiles = Array((datafile1,descriptionfile1) ),
       outputFile = "myoutput.txt",

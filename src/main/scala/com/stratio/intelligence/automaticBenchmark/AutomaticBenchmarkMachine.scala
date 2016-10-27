@@ -4,26 +4,29 @@ import java.io.{File, PrintWriter}
 
 import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, DatasetReader}
 import com.stratio.intelligence.automaticBenchmark.functions.AutomaticBenchmarkFunctions
-import com.stratio.intelligence.automaticBenchmark.models.{BenchmarkLMT, BenchmarkDecisionTree, BenchmarkLogisticRegression}
 import org.apache.spark.ml.feature.VectorAssembler
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
-import org.apache.spark.sql.types.{StructField, StringType, StructType}
-import org.apache.spark.mllib.linalg.Vector
-
-import scala.collection.mutable
 
 class AutomaticBenchmarkMachine(sqlContext: SQLContext) {
 
+  // Logging and Debug
+  private val logger = AutomaticBenchmarkMachineLogger
+  def enableDebugMode()  = logger.DEBUGMODE = true
+  def disableDebugMode() = logger.DEBUGMODE = false
+
+  // SparkContext
   val sc = sqlContext.sparkContext
 
+  /**
+    *  Launches the automatic benchmarking process
+    */
   def run(
-           dataAndDescriptionFiles: Array[(String, String)], // ("hdfs://data/mydata.csv", "hdfs://data/mydata.description")
-           outputFile: String, // "hdfs://myoutput.txt"
-           seed: Long, // metrics: Array[String],
-           kfolds: Integer, // kfolds is the k for the k-fold CV
-           mtimesFolds: Integer = 1, // mtimesFolds is the number of times to repeat the complete k-fold CV process independently
+           dataAndDescriptionFiles: Array[(String, String)],  // ("hdfs://data/mydata.csv", "hdfs://data/mydata.description")
+           outputFile: String,                                // "hdfs://myoutput.txt"
+           seed: Long,                                        // metrics: Array[String],
+           kfolds: Integer,                                   // kfolds is the k for the k-fold CV
+           mtimesFolds: Integer = 1,                          // mtimesFolds is the number of times to repeat the complete k-fold CV process independently
            // It should be replaced by: algorithms: Array[BenchmarkAlgorithm]
            algorithms: Array[String]
   ): Array[Array[Array[Array[Any]]]] = {
@@ -70,7 +73,7 @@ class AutomaticBenchmarkMachine(sqlContext: SQLContext) {
     }
 
     // This is an empty DataFrame to be used in places where an actual DataFrame has no sense
-    val emptySchema = StructType(Array(StructField("dummy", StringType, true)))
+    val emptySchema    = StructType(Array(StructField("dummy", StringType, true)))
     val emptyDataframe = sqlContext.createDataFrame(sc.emptyRDD[Row], emptySchema)
 
 
@@ -270,5 +273,24 @@ class AutomaticBenchmarkMachine(sqlContext: SQLContext) {
     writer.close()
 
     metricsArray
+  }
+}
+
+object AutomaticBenchmarkMachineLogger{
+
+  var DEBUGMODE = false
+
+  def logDebug(msn:String): Unit ={
+    if(DEBUGMODE)
+      println(msn)
+  }
+
+  def logDebug( op: => Unit ): Unit ={
+    if(DEBUGMODE) {
+      val stream = new java.io.ByteArrayOutputStream()
+      Console.withOut(stream) { op }
+      println(stream.toString)
+      stream.close()
+    }
   }
 }

@@ -1,21 +1,27 @@
 package com.stratio.intelligence.automaticBenchmark.dataset
 
+import com.stratio.intelligence.automaticBenchmark.{AutomaticBenchmarkMachineLogger}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.spark.sql.types._
 
 object DatasetReader {
 
+  private val logger = AutomaticBenchmarkMachineLogger
+
   def readDataAndDescription( sqlContext: SQLContext, datafile:String, descriptionFile:String ): AbmDataset ={
 
       // Parsing description file
       val (classColumn: String, positiveLabel: String, customSchema: StructType, categoricalPresent: Boolean) =
         parseDescriptionFile(sqlContext, descriptionFile)
+
       // Reading data file
       var df1 = sqlContext.read.format("com.databricks.spark.csv")
         .option("header", "false")
         .schema(customSchema).load(datafile)
-      df1.show()
+
+      logger.logDebug( "=> Readed data: " )
+      logger.logDebug( df1.show() )
 
       // Getting categorical columns
       val categoricalColumns: Array[String] = df1.schema.fields
@@ -49,7 +55,8 @@ object DatasetReader {
     val descriptionDf = sqlContext.read.format("com.databricks.spark.csv").option("header", "false").
       schema(dictionarySchema).load(file)
 
-    descriptionDf.show()
+    logger.logDebug( "=> Readed description file: " )
+    logger.logDebug( descriptionDf.show() )
 
     var flagCategorical = false // whether there exist categorical columns in this dataset or not
 
