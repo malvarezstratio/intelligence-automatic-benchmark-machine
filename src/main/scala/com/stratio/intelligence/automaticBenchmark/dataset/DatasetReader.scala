@@ -1,6 +1,7 @@
 package com.stratio.intelligence.automaticBenchmark.dataset
 
 import com.stratio.intelligence.automaticBenchmark.{AutomaticBenchmarkMachineLogger}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.spark.sql.types._
@@ -11,34 +12,44 @@ object DatasetReader {
 
   def readDataAndDescription( sqlContext: SQLContext, datafile:String, descriptionFile:String ): AbmDataset ={
 
+      val abmDataset: AbmDataset = AbmDataset()
+
       // Parsing description file
-      val (classColumn: String, positiveLabel: String, customSchema: StructType, categoricalPresent: Boolean) =
-        parseDescriptionFile(sqlContext, descriptionFile)
+      parseDescriptionFile( sqlContext, descriptionFile, abmDataset )
 
       // Reading data file
-      var df1 = sqlContext.read.format("com.databricks.spark.csv")
+      abmDataset.df = sqlContext.read.format( "com.databricks.spark.csv" )
         .option("header", "false")
-        .schema(customSchema).load(datafile)
+        .schema(abmDataset.dfSchema)
+        .load(datafile)
 
-      logger.logDebug( "=> Readed data: " )
-      logger.logDebug( df1.show() )
+      logger.logDebug( s"=> Readed data '$datafile': " )
+      logger.logDebug( abmDataset.df.show() )
 
       // Getting categorical columns
-      val categoricalColumns: Array[String] = df1.schema.fields
+      val categoricalColumns: Array[String] = abmDataset.df.schema.fields
         .filter(
           mystructfield =>
-            ( (mystructfield.dataType == StringType) && (mystructfield.name != classColumn)) )
+            (mystructfield.dataType == StringType) && (mystructfield.name != abmDataset.labelColumn ) )
+        .map(_.name)
+
+      // Getting numerical columns
+      val numericalColumns: Array[String] = abmDataset.df.schema.fields
+        .filter( field => (field.dataType == DoubleType) && (field.name != abmDataset.labelColumn ) )
         .map(_.name)
 
       // Find out whether the class column is a String field. In that case, it must be recoded as double
-      val flagClassNeedsEncoding = !(df1.schema.fields.filter(mystructfield =>
-        ((mystructfield.name == classColumn) && (mystructfield.dataType == StringType))
-      ).isEmpty) // if it is NOT empty, then the class column has String type and must be recoded
-      if (flagClassNeedsEncoding) {
-        df1 = encodeClassColumn(df1, classColumn, positiveLabel)
-      }
+      val flagClassNeedsEncoding = abmDataset.df.schema.fields.exists(
+        mystructfield => (mystructfield.name == abmDataset.labelColumn) && (mystructfield.dataType == StringType)
+      ) // if it is NOT empty, then the class column has String type and must be recoded
 
-    AbmDataset(df1, classColumn, positiveLabel, categoricalColumns, categoricalPresent)
+      if (flagClassNeedsEncoding)
+        encodeClassColumn( abmDataset )
+
+      abmDataset.categoricalFeatures = categoricalColumns
+      abmDataset.numericalFeatures = numericalColumns
+
+      abmDataset
   }
 
   /**
@@ -46,73 +57,68 @@ object DatasetReader {
     * the label that corresponds to the positive class, and the schema structure that must be used when
     * reading the dataset
     */
-  def parseDescriptionFile(sqlContext:SQLContext, file: String): (String, String, StructType, Boolean) = {
+  def parseDescriptionFile( sqlContext:SQLContext, file: String, abmDataset: AbmDataset ): AbmDataset = {
 
-    val dictionarySchema = StructType(Array(
-      StructField("colName", StringType, true),
-      StructField("type", StringType, true)
-    ))
-    val descriptionDf = sqlContext.read.format("com.databricks.spark.csv").option("header", "false").
-      schema(dictionarySchema).load(file)
+    // Schema of the description file: csv with two columns
+      val dictionarySchema = StructType(Array(
+        StructField("colName", StringType, true),
+        StructField("type", StringType, true)
+      ))
 
-    logger.logDebug( "=> Readed description file: " )
-    logger.logDebug( descriptionDf.show() )
+    // Reading description file
+      val descriptionDf =
+        sqlContext.read.format("com.databricks.spark.csv")
+          .option("header", "false")
+          .schema(dictionarySchema).load(file)
 
-    var flagCategorical = false // whether there exist categorical columns in this dataset or not
+      logger.logDebug( s"=> Readed description file '$file': " )
+      logger.logDebug( descriptionDf.show() )
 
-    val myclassColumn = descriptionDf.head(1)(0)(1).toString // second column of the first row -> class column
-    val mypositiveLabel = descriptionDf.head(2)(1)(1).toString // second column of the second row -> positive label
-    val myrddStructField =
-      descriptionDf.map {
-        x =>
-          if (x.getString(0) != "classcolumn" && x.getString(0) != "positivelabel") {
-            val colname = x.getString(0)
-            val coltype = x.getString(1).toLowerCase
-            coltype match {
-              case "double" => StructField(colname, DoubleType)
-              case "string" => StructField(colname, StringType)
-              case "integer" => StructField(colname, IntegerType)
+    // Getting label column and it's positive label
+      abmDataset.labelColumn        = descriptionDf.head(1)(0)(1).toString // 2nd col of the first row:  class column
+      abmDataset.positiveLabelValue = descriptionDf.head(2)(1)(1).toString // 2nd col of the second row: positive label
+
+    // Reading dataset schema
+      val myrddStructField: RDD[StructField] =
+        descriptionDf.map {
+          x =>
+            if (x.getString(0) != "classcolumn" && x.getString(0) != "positivelabel") {
+              val colname = x.getString(0)
+              val coltype = x.getString(1).toLowerCase
+              coltype match {
+                case "double"  => StructField(colname, DoubleType)
+                case "string"  => StructField(colname, StringType)
+                case "integer" => StructField(colname, IntegerType)
+              }
+            } else {
+              StructField("none", StringType)
             }
-          } else {
-            StructField("none", StringType)
-          }
-      }
+        }
 
-    flagCategorical = !(myrddStructField.filter { x => x.dataType == StringType && x.name != "none" }.isEmpty)
+      val myarray: Array[StructField] = myrddStructField.toArray.drop(2) // Drop the first two elements as it is a void StructField
+      val mycustomSchema: StructType = StructType(myarray)
 
-    val myarray = myrddStructField.toArray.drop(2) // Drop the first two elements as it is a void StructField
-    val mycustomSchema = org.apache.spark.sql.types.StructType(myarray)
+      abmDataset.dfSchema = mycustomSchema
 
-    return (myclassColumn, mypositiveLabel, mycustomSchema, flagCategorical)
+    abmDataset
   }
 
   /** Recode the class column when it is a string, and convert it to doubles 1.0 or 0.0
     * The value "1.0", positive, corresponds to the positive class specified by the user via .description file
     */
-  def encodeClassColumn(df: DataFrame, classColumn: String, PositiveLabel: String): DataFrame = {
-    val classType = df.schema.filter(_.name == classColumn)(0).dataType
+  def encodeClassColumn( abmDataset: AbmDataset ) {
 
-    val dffinal: DataFrame =
-      if (classType == StringType) {
-        // Value 1.0 should correspond to the user-specified positive label
-        val classToNumeric =
-          udf { (make: String) =>
-            make match {
-              case PositiveLabel => 1.0 // variable name PositiveLabel must start with capital P to work inside the match
-              case _ => 0.0
-            }
-          }
-        df.withColumn(classColumn, classToNumeric(df(classColumn)))
-      } else {
-        df
-      }
+    val labelColumn = abmDataset.labelColumn
+    val classType = abmDataset.df.schema.filter(_.name == labelColumn)(0).dataType
 
-    // Move the class column to the right-most position
-    var dffinal2: DataFrame = dffinal.withColumn(classColumn + "new", dffinal(classColumn))
-    dffinal2 = dffinal2.drop(classColumn)
-    dffinal2 = dffinal2.withColumnRenamed(classColumn + "new", classColumn)
-
-    return dffinal2
+    if (classType == StringType) {
+      // Value 1.0 should correspond to the user-specified positive label
+      val classToNumeric =  udf { (make: String) => if( make == abmDataset.positiveLabelValue ) 1.0 else 0.0 }
+      abmDataset.df =
+        abmDataset.df
+          .withColumn( labelColumn + "new", classToNumeric( col(labelColumn)) )
+          .drop(labelColumn).withColumnRenamed( labelColumn + "new", labelColumn )
+    }
   }
 
 }

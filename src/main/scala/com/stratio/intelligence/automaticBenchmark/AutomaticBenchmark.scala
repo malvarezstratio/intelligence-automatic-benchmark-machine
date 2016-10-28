@@ -1,9 +1,13 @@
 package com.stratio.intelligence.automaticBenchmark
 
+import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
+import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
+import org.apache.spark.mllib.linalg.{SparseVector, DenseVector, Vector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.functions._
 import org.apache.spark.{SparkConf, SparkContext}
-
+import com.stratio.intelligence.automaticBenchmark.models.logisticRegression.BenchmarkLogisticRegression
 
 object AutomaticBenchmark extends App {
 
@@ -12,6 +16,40 @@ object AutomaticBenchmark extends App {
   val sc = new SparkContext(conf)
   sc.setLogLevel("ERROR")
   val sqlContext = new SQLContext(sc)
+
+
+/*
+  val df = sqlContext.createDataFrame(Seq(
+    (0, "a"),
+    (1, "b"),
+    (2, "c"),
+    (3, "a"),
+    (4, "a"),
+    (5, "c")
+  )).toDF("id", "category")
+
+  val indexer = new StringIndexer()
+    .setInputCol("category")
+    .setOutputCol("categoryIndex")
+    .fit(df)
+  val indexed = indexer.transform(df)
+
+  val toDenseVector = udf( (x:Vector) => {
+    x match{
+      case features: DenseVector => features
+      case features: SparseVector => features.toDense
+    }
+  })
+
+  val encoder = new OneHotEncoder()
+    .setInputCol("categoryIndex")
+    .setOutputCol("categoryVec")
+    .setDropLast(false)
+
+  val encoded = encoder.transform(indexed).withColumn("vectorizedFeatures",toDenseVector(col("categoryVec")))
+  encoded.show()
+  */
+
 
 
   // Data files and description files
@@ -42,6 +80,11 @@ object AutomaticBenchmark extends App {
     val abm = new AutomaticBenchmarkMachine(sqlContext)
     abm.enableDebugMode()
 
+  // Defining models
+    val models:Array[BenchmarkModel] = Array(
+      new BenchmarkLogisticRegression(sc)
+    )
+
   // Executing the benchmarking process
     abm.run(
       dataAndDescriptionFiles = Array((datafile1,descriptionfile1) ),
@@ -49,7 +92,7 @@ object AutomaticBenchmark extends App {
       seed = 11,
       kfolds = 3,
       mtimesFolds = 1,
-      algorithms = Array("LMT")
+      algorithms = models
     )
 
 }

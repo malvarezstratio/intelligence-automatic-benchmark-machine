@@ -1,0 +1,3 @@
+package com.stratio.intelligence.automaticBenchmark.models
+
+abstract class ModelParameters

@@ -3,3 +3,4 @@
 AutomaticBenchmark.iml
 myoutput.txt
 /target
+/target/*

@@ -1,8 +1,9 @@
 package com.stratio.intelligence.automaticBenchmark.functions
 
+import com.stratio.intelligence.automaticBenchmark.dataset.AbmDataset
 import org.apache.spark.ml.{PipelineModel, Pipeline}
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, StringIndexerModel}
-import org.apache.spark.mllib.linalg.{Vector,Vectors}
+import org.apache.spark.mllib.linalg.{SparseVector, DenseVector, Vector, Vectors}
 import org.apache.spark.mllib.tree.configuration.FeatureType
 import org.apache.spark.mllib.tree.model.NodeLmt
 import org.apache.spark.sql.functions._
@@ -19,52 +20,11 @@ object AutomaticBenchmarkFunctions {
     *
     * Both functions are defined inside to avoid using them from the outside of the function.
     */
-  def indexRawCategoricalFeatures(
-                                                unsortedCategoricalColumns: Array[String], df: DataFrame ):
-  (DataFrame, Array[String], Map[String, Array[String]]) = {
+  def indexRawCategoricalFeatures( abmDataset:AbmDataset ) = {
 
-    /*
-    // createIndexersMap y transformCategoricalDF are defined inside to avoid using them from the outside of the function
-    def createIndexersMap(unsortedCategoricalColumns: Array[String], df: DataFrame): Map[String, StringIndexerModel] = {
+    val df = abmDataset.df
 
-      val categoricalColumns = df.columns.filter(x => unsortedCategoricalColumns.contains(x))
-      val indexers = categoricalColumns.map(x => (x, new StringIndexer().setInputCol(x).setOutputCol(x + "Index").fit(df)))
-      val indexersMap = mutable.Map[String, StringIndexerModel]()
-      for (i <- 0 to (indexers.size - 1)) {
-        indexersMap.put(indexers(i)._1, indexers(i)._2)
-      }
-      return indexersMap.toMap
-    }
-
-
-    def transformCategoricalDF(
-                                categoricalColumns: Array[String],
-                                indexersMap: Map[String, StringIndexerModel],
-                               df: DataFrame): DataFrame = {
-
-      val num_categorical_columns = categoricalColumns.size
-      var arrayTransformed = new Array[DataFrame](num_categorical_columns)
-      for (i <- 0 to num_categorical_columns - 1) {
-        i match {
-          case 0 => {
-            arrayTransformed(0) = indexersMap.get(categoricalColumns(0)).get.transform(df)
-          }
-          case _ => {
-            arrayTransformed(i) = indexersMap.get(categoricalColumns(i)).get.transform(arrayTransformed(i - 1))
-          }
-        }
-      }
-      val newColumns = df.columns.map(x =>
-        x match {
-          case myname if categoricalColumns.contains(myname) => myname + "Index"
-          case _ => x
-        })
-      val df2 = arrayTransformed(num_categorical_columns - 1).select(newColumns.head, newColumns.tail: _*)
-      return df2
-    }
-    */
-
-    // val columnsWithoutClass: Array[String] = df.columns.dropRight(1)
+    val unsortedCategoricalColumns: Array[String] = abmDataset.categoricalFeatures
 
     // Getting categorical features
       val categoricalColumns: Array[String] = df.columns.filter(x => unsortedCategoricalColumns.contains(x))
@@ -76,7 +36,7 @@ object AutomaticBenchmarkFunctions {
       // Construct an array of stages (each stage is a StringIndexer)
       val indexCategoricalFeatsStages: Array[StringIndexer] =
         categoricalColumns.map( categoricalColName =>
-          new StringIndexer().setInputCol(categoricalColName).setOutputCol(categoricalColName + "Index")
+          new StringIndexer().setInputCol(categoricalColName).setOutputCol(categoricalColName + "_asIndex")
         )
       // Construct a pipeline with the array of stages
       val indexCategoricalFeatsPipeline = new Pipeline()
@@ -84,9 +44,7 @@ object AutomaticBenchmarkFunctions {
       // Fit the pipeline to obtain a pipelineModel
       val indexCategoricalFeatsModel: PipelineModel = indexCategoricalFeatsPipeline.fit(noNullDf)
       // Use the pipelineModel to transform a dataframe
-      val indexedDF: DataFrame = indexCategoricalFeatsModel.transform(noNullDf)
-      // Dropping raw categorical columns (encoded as strings)
-      val transformedDF: DataFrame = categoricalColumns.foldLeft(indexedDF)((df, colName) => df.drop(colName) )
+      val transformedDF: DataFrame = indexCategoricalFeatsModel.transform(noNullDf)
 
     // New categorical columns names
       val newCategoricalColNames: Array[String] = indexCategoricalFeatsStages.map(_.getOutputCol)
@@ -102,30 +60,8 @@ object AutomaticBenchmarkFunctions {
         }
       ).toMap
 
-
-    /*
-      val indexersMap = createIndexersMap(unsortedCategoricalColumns, noNullDf)
-      // val categoricalColumns = df.columns.filter(x => unsortedCategoricalColumns.contains(x))
-      // val transformedDF = transformCategoricalDF(categoricalColumns, indexersMap, df)
-
-      val categoricalColumnsWithIndex = columnsWithoutClass.zipWithIndex.filter(x => unsortedCategoricalColumns.contains(x._1))
-      val varsWithValues: Map[String, Array[String]] = indexersMap.map(x => (x._1, x._2.labels.map(y => x._1 + ":" + y))) // labels is sorted in the
-      val varsWithNumberOfValues: Map[String, Int] = indexersMap.map(x => (x._1, x._2.labels.size)) // same order of the codes
-      val allNames: Array[String] = columnsWithoutClass.flatMap(x => x match {
-          case categoricalColumn if categoricalColumns.contains(x) => varsWithValues.get(x).get
-          case _ => Array(x)
-        })
-
-      val allNumbersOfValues: Array[Int] = columnsWithoutClass.map(x => x match {
-        case categoricalColumn if categoricalColumns.contains(x) => varsWithNumberOfValues.get(x).get
-        case _ => 1
-      })
-      val categoricalFeaturesMap: Map[Int, Int] = categoricalColumnsWithIndex.map(x => (x._2, allNumbersOfValues(x._2))).toMap
-
-      return (transformedDF, categoricalFeaturesMap, allNames, columnsWithoutClass)
-    */
-
-    (transformedDF, newCategoricalColNames, catFeatValuesMap)
+    abmDataset.indexedCategoricalFeatures = newCategoricalColNames
+    abmDataset.df = transformedDF
   }
 
   /**
@@ -138,13 +74,20 @@ object AutomaticBenchmarkFunctions {
     * NOTE: the function below is NEVER used as it has been turned into an UDF in the following cell
     */
 
-  def oneHotTransformer( indexedCatColNames:Array[String], df:DataFrame ): (DataFrame, Array[String]) = {
+  def oneHotTransformer( abmDataset:AbmDataset ) = {
+
+    val df = abmDataset.df
+    val indexedCatColNames = abmDataset.indexedCategoricalFeatures
+
+    // UDF - Assures DenseVector in a VectorType column
+    val toDenseVector = udf( (x:Vector) => x.toDense )
 
     // Encode as oneHot the categorical features through a Pipeline process
       // Construct an array of stages (each stage is a StringIndexer)
       val oneHotCatFeatsStages: Array[OneHotEncoder] =
         indexedCatColNames.map( categoricalColName =>
-          new OneHotEncoder().setInputCol(categoricalColName).setOutputCol(categoricalColName + "OneHot")
+          new OneHotEncoder()
+            .setInputCol(categoricalColName).setOutputCol(categoricalColName + "_asBinaryAux").setDropLast(false)
         )
       // Construct a pipeline with the array of stages
       val indexCategoricalFeatsPipeline = new Pipeline()
@@ -152,13 +95,20 @@ object AutomaticBenchmarkFunctions {
       // Fit the pipeline to obtain a pipelineModel
       val oneHotCatFeatsModel: PipelineModel = indexCategoricalFeatsPipeline.fit(df)
       // Use the pipelineModel to transform a dataframe
-      val oneHotDF: DataFrame = oneHotCatFeatsModel.transform(df)
-      // Dropping raw categorical columns (encoded as strings)
-      val transformedDF: DataFrame = indexedCatColNames.foldLeft(oneHotDF)((df, colName) => df.drop(colName) )
-    // New categorical columns
-      val oneHotCatColNames: Array[String] = oneHotCatFeatsStages.map(_.getOutputCol)
+      val auxTransformedDF: DataFrame = oneHotCatFeatsModel.transform(df)
 
-    (transformedDF,oneHotCatColNames)
+    // Assure dense vectors
+      val transformedDF: DataFrame = oneHotCatFeatsStages.map(_.getOutputCol).foldLeft(auxTransformedDF)(
+        (df,colname) => {
+          df.withColumn(colname.replaceAll("Aux$",""),toDenseVector(col(colname))).drop(colname)
+        }
+      )
+
+    // New categorical columns
+      val oneHotCatColNames: Array[String] = oneHotCatFeatsStages.map(_.getOutputCol.replaceAll("Aux$",""))
+
+    abmDataset.oneHotCategoricalFeatures = oneHotCatColNames
+    abmDataset.df = transformedDF
   }
 
   def nominalToNumericUDF(categoricalFeaturesInfo: Map[Int,Int]) = udf{
@@ -190,14 +140,14 @@ object AutomaticBenchmarkFunctions {
     * The fold assignment is placed in "m x n" aditional columns where "m" is the number of times the partition is
     * repeated and "n" is the number of folds in each partition
     */
-  def makeAllFolds(df: DataFrame, classColumn: String, nfolds: Int, m: Int, seed: Long): Array[(DataFrame,DataFrame)] = {
+  def makeAllFolds( abmDataset:AbmDataset, nfolds: Int, m: Int, seed: Long): Array[(DataFrame,DataFrame)] = {
+
+    val df = abmDataset.df
 
     // First we divide the dataframe in two according to the class which is a number 0.0 or 1.0
-    val df_positive = df.where(classColumn + " = 1.0")
-    val df_negative = df.where(classColumn + " = 0.0")
+    val df_positive = df.where( abmDataset.labelColumn + " = 1.0")
+    val df_negative = df.where( abmDataset.labelColumn + " = 0.0")
 
-    val npositives = df_positive.count.toInt
-    val nnegatives = df_negative.count.toInt
     val allFolds: Array[(DataFrame, DataFrame)] = new Array[(DataFrame, DataFrame)](m * nfolds)
 
     for(k <- 1 to m ){
@@ -209,14 +159,14 @@ object AutomaticBenchmarkFunctions {
       val foldsPositive = df_positive.randomSplit(Array.fill(nfolds)(1))
       val foldsNegative = df_negative.randomSplit(Array.fill(nfolds)(1))
 
-      for(i <- 0 to (nfolds-1)){
+      for(i <- 0 until nfolds){
         // A "fold" contains 1/nfolds positive + 1/nfolds negative examples
         foldsDFs(i) = foldsPositive(i).unionAll(foldsNegative(i))
       }
 
-      val a: Unit = for(i <- 0 to (nfolds-1)){
+      val a: Unit = for(i <- 0 until nfolds){
         testDFs(i) = foldsDFs(i)
-        for(j <- 0 to (nfolds-1)){
+        for(j <- 0 until nfolds){
           if(i != j){
             if(trainDFs(i) == null){
               trainDFs(i) = foldsDFs(j)
