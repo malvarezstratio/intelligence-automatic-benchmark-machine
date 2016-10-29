@@ -1,13 +1,11 @@
-package com.stratio.intelligence.automaticBenchmark
+package com.stratio.intelligence
 
+import com.stratio.intelligence.automaticBenchmark.AutomaticBenchmarkMachine
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
-import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
-import org.apache.spark.mllib.linalg.{SparseVector, DenseVector, Vector}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.functions._
-import org.apache.spark.{SparkConf, SparkContext}
+import com.stratio.intelligence.automaticBenchmark.models.decisionTree.BenchmarkDecisionTree
 import com.stratio.intelligence.automaticBenchmark.models.logisticRegression.BenchmarkLogisticRegression
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.{SparkConf, SparkContext}
 
 object AutomaticBenchmark extends App {
 
@@ -75,6 +73,9 @@ object AutomaticBenchmark extends App {
   val datafile1 = "./src/main/resources/diagnosis.csv"
   val descriptionfile1 = "./src/main/resources/diagnosis.description"
 
+  val datafile2 = "./src/main/resources/bank.csv"
+  val descriptionfile2 = "./src/main/resources/bank.description"
+
 
   // New Automatic Bechmark Machine
     val abm = new AutomaticBenchmarkMachine(sqlContext)
@@ -82,12 +83,13 @@ object AutomaticBenchmark extends App {
 
   // Defining models
     val models:Array[BenchmarkModel] = Array(
-      new BenchmarkLogisticRegression(sc)
+      new BenchmarkLogisticRegression(sc),
+      new BenchmarkDecisionTree(sc)
     )
 
   // Executing the benchmarking process
     abm.run(
-      dataAndDescriptionFiles = Array((datafile1,descriptionfile1) ),
+      dataAndDescriptionFiles = Array( (datafile1,descriptionfile1) ),
       outputFile = "myoutput.txt",
       seed = 11,
       kfolds = 3,

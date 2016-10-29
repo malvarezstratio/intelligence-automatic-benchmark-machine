@@ -12,42 +12,38 @@ object DatasetReader {
 
   def readDataAndDescription( sqlContext: SQLContext, datafile:String, descriptionFile:String ): AbmDataset ={
 
+      // => New dataset
       val abmDataset: AbmDataset = AbmDataset()
+      abmDataset.fileName = datafile
 
-      // Parsing description file
-      parseDescriptionFile( sqlContext, descriptionFile, abmDataset )
+      // · Parsing description file
+        parseDescriptionFile( sqlContext, descriptionFile, abmDataset )
 
-      // Reading data file
-      abmDataset.df = sqlContext.read.format( "com.databricks.spark.csv" )
-        .option("header", "false")
-        .schema(abmDataset.dfSchema)
-        .load(datafile)
+      // · Reading data file
+        abmDataset.df = sqlContext.read.format( "com.databricks.spark.csv" )
+          .option("header", "false").schema(abmDataset.dfSchema).load(datafile)
+        logger.logDebug( s"=> Readed data '$datafile': " )
+        logger.logDebug( abmDataset.df.show() )
 
-      logger.logDebug( s"=> Readed data '$datafile': " )
-      logger.logDebug( abmDataset.df.show() )
+      // · Getting categorical columns
+        val categoricalColumns: Array[String] = abmDataset.df.schema.fields
+          .filter( mystructfield =>
+              (mystructfield.dataType == StringType) && (mystructfield.name != abmDataset.labelColumn ) )
+          .map(_.name)
+        abmDataset.categoricalFeatures = categoricalColumns
 
-      // Getting categorical columns
-      val categoricalColumns: Array[String] = abmDataset.df.schema.fields
-        .filter(
-          mystructfield =>
-            (mystructfield.dataType == StringType) && (mystructfield.name != abmDataset.labelColumn ) )
-        .map(_.name)
+      // · Getting numerical columns
+        val numericalColumns: Array[String] = abmDataset.df.schema.fields
+          .filter( field => (field.dataType == DoubleType) && (field.name != abmDataset.labelColumn ) )
+          .map(_.name)
+        abmDataset.numericalFeatures = numericalColumns
 
-      // Getting numerical columns
-      val numericalColumns: Array[String] = abmDataset.df.schema.fields
-        .filter( field => (field.dataType == DoubleType) && (field.name != abmDataset.labelColumn ) )
-        .map(_.name)
+      // · Find out whether the class column is a String field. In that case, it must be recoded as double
+        val flagClassNeedsEncoding = abmDataset.df.schema.fields.exists(
+          mystructfield => (mystructfield.name == abmDataset.labelColumn) && (mystructfield.dataType == StringType)
+        ) // if it is NOT empty, then the class column has String type and must be recoded
 
-      // Find out whether the class column is a String field. In that case, it must be recoded as double
-      val flagClassNeedsEncoding = abmDataset.df.schema.fields.exists(
-        mystructfield => (mystructfield.name == abmDataset.labelColumn) && (mystructfield.dataType == StringType)
-      ) // if it is NOT empty, then the class column has String type and must be recoded
-
-      if (flagClassNeedsEncoding)
-        encodeClassColumn( abmDataset )
-
-      abmDataset.categoricalFeatures = categoricalColumns
-      abmDataset.numericalFeatures = numericalColumns
+        if (flagClassNeedsEncoding) encodeClassColumn( abmDataset )
 
       abmDataset
   }
@@ -60,16 +56,12 @@ object DatasetReader {
   def parseDescriptionFile( sqlContext:SQLContext, file: String, abmDataset: AbmDataset ): AbmDataset = {
 
     // Schema of the description file: csv with two columns
-      val dictionarySchema = StructType(Array(
-        StructField("colName", StringType, true),
-        StructField("type", StringType, true)
-      ))
+      val dictionarySchema = StructType(
+        Array( StructField("colName", StringType, true), StructField("type", StringType, true) ) )
 
     // Reading description file
-      val descriptionDf =
-        sqlContext.read.format("com.databricks.spark.csv")
-          .option("header", "false")
-          .schema(dictionarySchema).load(file)
+      val descriptionDf: DataFrame = sqlContext.read
+          .format("com.databricks.spark.csv").option("header", "false").schema(dictionarySchema).load(file)
 
       logger.logDebug( s"=> Readed description file '$file': " )
       logger.logDebug( descriptionDf.show() )
@@ -95,7 +87,7 @@ object DatasetReader {
             }
         }
 
-      val myarray: Array[StructField] = myrddStructField.toArray.drop(2) // Drop the first two elements as it is a void StructField
+      val myarray: Array[StructField] = myrddStructField.collect().drop(2) // Drop the first two elements as it is a void StructField
       val mycustomSchema: StructType = StructType(myarray)
 
       abmDataset.dfSchema = mycustomSchema

@@ -1,5 +1,5 @@
 classcolumn,y
-positivelabel,yes
+positivelabel,1
 age,double
 job,string
 marital,string

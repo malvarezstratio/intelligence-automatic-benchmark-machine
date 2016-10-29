@@ -11,9 +11,9 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
-import scala.collection.immutable.IndexedSeq
+class BenchmarkLogisticRegression( sc:SparkContext ) extends BenchmarkModel{
 
-class BenchmarkLogisticRegression(sc:SparkContext ) extends BenchmarkModel{
+  override val MODEL_NAME: String = "Logistic regression"
 
   override  def categoricalAsIndex: Boolean = true
   override  def categoricalAsBinaryVector: Boolean = true
@@ -21,7 +21,7 @@ class BenchmarkLogisticRegression(sc:SparkContext ) extends BenchmarkModel{
   private var trainedModel: LogisticRegressionModel = _
 
   /** Sets the model parameters */
-  override def setParameters(modelParams: ModelParameters): Unit = {
+  override def setParameters( modelParams: ModelParameters ): Unit = {
     modelParams match {
       case m:LogisticRegressionParams => this.modelParameters = modelParams
       case _ => println("Error")
@@ -44,13 +44,11 @@ class BenchmarkLogisticRegression(sc:SparkContext ) extends BenchmarkModel{
         new LabeledPoint(row.getAs[Double](label),row.getAs[Vector]("denseVectorFeatures") )
     })
 
-    print(rdd.take(1))
-
     rdd
   }
 
   // TODO
-  override def train[T]( data: T ): Unit = {
+  override def train[T]( dataset:AbmDataset, data: T ): Unit = {
     data match {
       case trainRDD:RDD[LabeledPoint] => {
          trainedModel = new LogisticRegressionWithLBFGS().setNumClasses(2).run( trainRDD )
@@ -110,89 +108,6 @@ class BenchmarkLogisticRegression(sc:SparkContext ) extends BenchmarkModel{
     return predictionAndLabels
   }
 
-  def getMetrics(trainedModel: LogisticRegressionModel, predictionsAndLabels:RDD[(Double,Double)]): List[(String,Any)]={
-
-    var metricsSummary: List[(String, Any)] = List()
-    // Multiclass Metrics
-
-    val multiclassMetrics = new MulticlassMetrics(predictionsAndLabels)
-
-    val confusionMatrix = multiclassMetrics.confusionMatrix
-
-    metricsSummary = metricsSummary :+ ("confusionMatrixTP",confusionMatrix(1,1))
-    metricsSummary = metricsSummary :+ ("confusionMatrixTN",confusionMatrix(0,0))
-    metricsSummary = metricsSummary :+ ("confusionMatrixFP",confusionMatrix(0,1))
-    metricsSummary = metricsSummary :+ ("confusionMatrixFN",confusionMatrix(1,0))
-
-    // Overall Statistics
-    val precision = multiclassMetrics.precision
-    metricsSummary = metricsSummary :+ ("precision", precision)
-
-    val recall = multiclassMetrics.recall // same as true positive rate
-    metricsSummary = metricsSummary :+ ("recall", recall)
-
-    val f1Score = multiclassMetrics.fMeasure
-    metricsSummary = metricsSummary :+ ("fMeasure", f1Score)
-
-    // Precision, Recall, FPR & F-measure by label
-    val labels = multiclassMetrics.labels
-    labels.foreach { l =>
-      metricsSummary = metricsSummary :+ (s"Precision($l)", multiclassMetrics.precision(l))
-      metricsSummary = metricsSummary :+ (s"Recall($l)", multiclassMetrics.recall(l))
-      metricsSummary = metricsSummary :+ (s"FPR($l)", multiclassMetrics.falsePositiveRate(l))
-      metricsSummary = metricsSummary :+ (s"F1-Score($l)", multiclassMetrics.fMeasure(l))
-    }
-
-    // Weighted stats
-    val weightedPrecision = multiclassMetrics.weightedPrecision
-    val weightedRecall = multiclassMetrics.weightedRecall
-    val weightedF1Score = multiclassMetrics.weightedFMeasure
-    val weightedFalsePositiveRate = multiclassMetrics.weightedFalsePositiveRate
-
-    // Binary classification metrics, varying  threshold
-
-
-    val binayMetrics = new BinaryClassificationMetrics(predictionsAndLabels)
-
-    // AUPRC
-    val binaryAUPRC = binayMetrics.areaUnderPR
-    metricsSummary = metricsSummary :+ ("AUPRC", binaryAUPRC)
-
-    // AUROC
-    val binaryAUROC = binayMetrics.areaUnderROC
-    metricsSummary = metricsSummary :+ ("AUROC", binaryAUROC)
-
-    // Precision by threshold
-    val binaryPrecision = binayMetrics.precisionByThreshold
-    metricsSummary = metricsSummary :+ ("precisionByThreshold", binaryPrecision.collect())
-
-    // Recall by threshold
-    val binaryRecall = binayMetrics.recallByThreshold
-    metricsSummary = metricsSummary :+ ("recallByThreshold", binaryRecall.collect())
-
-    // Precision-Recall Curve
-    val binaryPRC = binayMetrics.pr
-    metricsSummary = metricsSummary :+ ("PRCByThreshold", binaryPRC.collect())
-
-    // F-measure
-    val binaryF1Score = binayMetrics.fMeasureByThreshold
-    metricsSummary = metricsSummary :+ ("F1ScoreByThreshold", binaryF1Score.collect())
-
-    val beta = 0.5
-    val binaryFScore = binayMetrics.fMeasureByThreshold(beta)
-    metricsSummary = metricsSummary :+ ("FScoreByThreshold", binaryFScore.collect())
-
-    // Compute thresholds used in ROC and PR curves
-    val binaryThresholds = binaryPrecision.map(_._1)
-    metricsSummary = metricsSummary :+ ("Thresholds", binaryThresholds.collect())
-
-    // ROC Curve
-    val binaryRoc = binayMetrics.roc
-    metricsSummary = metricsSummary :+ ("ROCByThreshold", binaryRoc.collect())
-
-    return metricsSummary
-
-  }
   */
 
 }

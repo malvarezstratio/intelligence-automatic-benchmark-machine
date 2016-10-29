@@ -2,15 +2,16 @@ package com.stratio.intelligence.automaticBenchmark
 
 import java.io.{File, PrintWriter}
 
-import com.stratio.intelligence.automaticBenchmark.dataset.{Fold, AbmDataset, DatasetReader}
-import com.stratio.intelligence.automaticBenchmark.functions.AutomaticBenchmarkFunctions
+import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, DatasetReader, Fold}
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
-import com.stratio.intelligence.automaticBenchmark.result.BenchmarkResult
-import org.apache.spark.ml.feature.VectorAssembler
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SQLContext}
-
-import scala.collection.immutable.IndexedSeq
+import com.stratio.intelligence.automaticBenchmark.results.BenchmarkResult
+import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, StringIndexerModel}
+import org.apache.spark.ml.{Pipeline, PipelineModel}
+import org.apache.spark.mllib.linalg.Vector
+import org.apache.spark.mllib.tree.configuration.FeatureType
+import org.apache.spark.mllib.tree.model.NodeLmt
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{DataFrame, SQLContext}
 
 class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
 
@@ -31,53 +32,42 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
            mtimesFolds: Integer = 1,                          // mtimesFolds is the number of times to repeat the complete k-fold CV process independently
            // It should be replaced by: algorithms: Array[BenchmarkAlgorithm]
            algorithms: Array[BenchmarkModel]
-  ) = {
-
-    // Getting sparkcontext from sqlContext
-    val sc = sqlContext.sparkContext
-
-    // New AutomaticBenchmarkFunctions
-    val abmFuncs = AutomaticBenchmarkFunctions
+  ): Unit = {
 
     // New writer for output file
-    val writer = new PrintWriter(new File(outputFile))
+    val writer = new PrintWriter( new File(outputFile) )
 
-    // Parse the description file of each dataset, read the dataset, find the name of the class column, move it
-    // to the right-most column, find out the positive label and whether there are categorical features or not
+    // => Parse the description file of each dataset, read the dataset,
+    // find out the positive label and whether there are categorical features or not
     val dataInfo: Array[AbmDataset] = dataAndDescriptionFiles.map{
       case (datafile, descriptionfile) => DatasetReader.readDataAndDescription(sqlContext, datafile, descriptionfile)
     }
 
-    // Find out which preprocessing steps are required for the set of algorithms to be run
-    // so that each preprocessing is done only once
+    // => Find out which pre-processing steps are required for the set of algorithms to be run
+    // so that each pre-processing is done only once
     val (flagCatToDouble, flagCatToBinary) = getPreprocessingSteps( algorithms )
 
-    // For each dataset
+    // => For each dataset
     val benchmarkResults: Array[BenchmarkResult] =
       dataInfo.flatMap{ abmDataset => {
 
         logger.logInfo( s"· Processing dataset: ${abmDataset.fileName}")
+        logger.logInfo( abmDataset.getSummary() )
+        writer.println( abmDataset.getSummary() )
 
         logger.logDebug( "=> Original dataframe: " )
         logger.logDebug( abmDataset.df .show() )
 
-        // => Preprocessing steps
+        // => Pre-processing steps
 
         // <> Transform categorical features
           if (abmDataset.hasCategoricalFeats && (flagCatToDouble || flagCatToBinary)) {
 
             // · Index raw categorical features (encoded as strings, transformed to double index values starting at 0.0)
-            abmFuncs.indexRawCategoricalFeatures( abmDataset )
-
-            logger.logDebug( "=> Dataframe with categorical features indexed: ")
-            logger.logDebug( abmDataset.df.show() )
+              indexRawCategoricalFeatures( abmDataset )
 
             // · OneHot encoding of categorical features
-            if (flagCatToBinary) {
-              abmFuncs.oneHotTransformer( abmDataset )
-              logger.logDebug( "=> Dataframe with categorical features encoded using one hot: ")
-              logger.logDebug( abmDataset.df.show() )
-            }
+              if (flagCatToBinary) oneHotTransformer( abmDataset )
           }
 
         // => Iterations
@@ -98,40 +88,197 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
       }
     } // End of iterating over datasets
 
-    println( benchmarkResults )
+    benchmarkResults.foreach( x => println(x.getSummary()) )
+    benchmarkResults.foreach( x => writer.println(x.getSummary()) )
 
+    writer.close()
   }
 
-  /**  Find out which preprocessing steps are required for the set of algorithms to be run
-    *  so that each preprocessing is done only once
+  /**  Find out which pre-processing steps are required for the set of algorithms to be run
+    *  so that each pre-processing is done only once
     */
   def getPreprocessingSteps( models:Array[BenchmarkModel] ): (Boolean,Boolean) ={
 
-    // Find out which preprocessing steps are required for the set of algorithms to be run
-    // so that each preprocessing is done only once
     models.foldLeft( (false,false) )( (catPrepro,model) =>{
       ( catPrepro._1 | model.categoricalAsIndex, catPrepro._2 | model.categoricalAsBinaryVector )
     })
   }
 
+  /**
+    * Encode categorical variables as numbers starting in 0
+    *
+    *   - createIndexersMap provides indexes to the categorical data transforming strings to numbers so that they can be codified as dummy variables later.
+    *   - transformCategoricalDF transforms the categorical columns in the dataframe to indexed categories
+    *
+    * Both functions are defined inside to avoid using them from the outside of the function.
+    */
+  def indexRawCategoricalFeatures( abmDataset:AbmDataset ) = {
+
+    val df = abmDataset.df
+
+    val unsortedCategoricalColumns: Array[String] = abmDataset.categoricalFeatures
+
+    // Getting categorical features
+    val categoricalColumns: Array[String] = df.columns.filter(x => unsortedCategoricalColumns.contains(x))
+
+    // Filling null values with 'na' string
+    val noNullDf = df.na.fill("na",categoricalColumns)
+
+    // Index categorical features through a Pipeline process
+    // Construct an array of stages (each stage is a StringIndexer)
+    val indexCategoricalFeatsStages: Array[StringIndexer] =
+      categoricalColumns.map( categoricalColName =>
+        new StringIndexer().setInputCol(categoricalColName)
+          .setOutputCol( categoricalColName + AutomaticBenchmarkMachine.INDEXED_CAT_SUFFIX )
+      )
+    // Construct a pipeline with the array of stages
+    val indexCategoricalFeatsPipeline = new Pipeline()
+    indexCategoricalFeatsPipeline.setStages( indexCategoricalFeatsStages )
+    // Fit the pipeline to obtain a pipelineModel
+    val indexCategoricalFeatsModel: PipelineModel = indexCategoricalFeatsPipeline.fit(noNullDf)
+    // Use the pipelineModel to transform a dataframe
+    val transformedDF: DataFrame = indexCategoricalFeatsModel.transform(noNullDf)
+
+    // New categorical columns names
+    val newCategoricalColNames: Array[String] = indexCategoricalFeatsStages.map(_.getOutputCol)
+
+    // Dictionary: map with each categorical feature and its transformation
+    val catFeatValuesMap: Map[(String,String),Map[Double,String]]  =
+      indexCategoricalFeatsModel.stages.map(
+        x => {
+          val stringIndexerModel = x.asInstanceOf[StringIndexerModel]
+          val catFeatName        = stringIndexerModel.getInputCol
+          val catFeatIndexedName = stringIndexerModel.getOutputCol
+
+          ( (catFeatName,catFeatIndexedName), // (raw cat. colname, indexed cat. colname)
+            stringIndexerModel.labels.zipWithIndex.map(x => (x._2.toDouble,x._1)).toMap
+          )
+        }
+      ).toMap
+    abmDataset.transformedCategoricalDict = catFeatValuesMap
+
+    abmDataset.indexedCategoricalFeatures = newCategoricalColNames
+    abmDataset.df = transformedDF
+
+    logger.logDebug( "=> Dataframe with categorical features indexed: ")
+    logger.logDebug( abmDataset.df.show() )
+  }
+
+  /**
+    * Transform categorical variables already encoded as numeric into binary dummy variables
+    *
+    * We assume that the categorical features have been encoded as Doubles starting from 0.0, i. e., an entry of
+    * categoricalFeaturesInfo of the form "2 -> 5" means that the feature with index 2 (the third feature) can take
+    * values in {0.0, 1.0, 2.0, 3.0, 4.0}
+    *
+    * NOTE: the function below is NEVER used as it has been turned into an UDF in the following cell
+    */
+
+  def oneHotTransformer( abmDataset:AbmDataset ) = {
+
+    val df = abmDataset.df
+    val indexedCatColNames = abmDataset.indexedCategoricalFeatures
+
+    // UDF - Assures DenseVector in a VectorType column
+    val toDenseVector = udf( (x:Vector) => x.toDense )
+
+    // Encode as oneHot the categorical features through a Pipeline process
+    // Construct an array of stages (each stage is a StringIndexer)
+    val oneHotCatFeatsStages: Array[OneHotEncoder] =
+      indexedCatColNames.map( categoricalColName =>
+        new OneHotEncoder()
+          .setInputCol(categoricalColName)
+          .setOutputCol(
+            categoricalColName.replaceAll(
+              s"${AutomaticBenchmarkMachine.INDEXED_CAT_SUFFIX}$$","") +
+              s"${AutomaticBenchmarkMachine.ONEHOT_CAT_SUFFIX}Aux")
+          .setDropLast(false)
+      )
+    // Construct a pipeline with the array of stages
+    val indexCategoricalFeatsPipeline = new Pipeline()
+      indexCategoricalFeatsPipeline.setStages( oneHotCatFeatsStages )
+    // Fit the pipeline to obtain a pipelineModel
+    val oneHotCatFeatsModel: PipelineModel = indexCategoricalFeatsPipeline.fit(df)
+    // Use the pipelineModel to transform a dataframe
+    val auxTransformedDF: DataFrame = oneHotCatFeatsModel.transform(df)
+
+    // Assure dense vectors
+    val transformedDF: DataFrame = oneHotCatFeatsStages.map(_.getOutputCol).foldLeft(auxTransformedDF)(
+      (df,colname) => {
+        df.withColumn(colname.replaceAll("Aux$",""),toDenseVector(col(colname))).drop(colname)
+      }
+    )
+
+    // New categorical columns
+    val oneHotCatColNames: Array[String] = oneHotCatFeatsStages.map(_.getOutputCol.replaceAll("Aux$",""))
+
+    abmDataset.oneHotCategoricalFeatures = oneHotCatColNames
+    abmDataset.df = transformedDF
+
+    logger.logDebug( "=> Dataframe with categorical features encoded using one hot: ")
+    logger.logDebug( abmDataset.df.show() )
+  }
+
+  /**
+    * Printing the tree for LMT
+    *
+    *   This function receives the top node of an lmt model and prints the tree structure
+    */
+
+  def printTree(node: NodeLmt, selVars: Array[String]): String = {
+    def printNode(node: NodeLmt, level: Int): String = {
+      if (node.isLeaf) "RL" + node.id + "\n"
+      else {
+        val split = node.split.get
+        val (splitDescriptionLeft, splitDescriptionRight) = {
+          val feat = selVars(split.feature)
+          split.featureType match {
+            case FeatureType.Continuous => {
+              val threshold = split.threshold
+              (feat + " <= " + threshold, feat + " > " + threshold)
+            }
+            case FeatureType.Categorical => {
+              val categories = "{" + split.categories.map(_.toInt).mkString(", ") + "}"
+              (feat + " in " + categories, feat + " not in " + categories)
+            }
+          }
+        }
+        val (left, right) = (node.leftNode.get, node.rightNode.get)
+
+        splitDescriptionLeft +
+          {if (left.isLeaf) ": " else {"\n" + "|   " * level}} +
+          printNode(left, level + 1) +
+          "|   " * (level - 1) +
+          splitDescriptionRight +
+          {if (right.isLeaf) ": " else {"\n" + "|   " * level}} +
+          printNode(right, level + 1)
+      }
+    }
+    "\n" + printNode(node, 1)
+  }
+}
+
+object AutomaticBenchmarkMachine{
+  val INDEXED_CAT_SUFFIX = "_asIndex"
+  val ONEHOT_CAT_SUFFIX  = "_asOneHot"
 }
 
 object AutomaticBenchmarkMachineLogger{
 
   var DEBUGMODE = false
 
-  def logInfo(msn:String): Unit = println(msn)
+  def logInfo(msn:String): Unit = println( Console.YELLOW + msn + Console.RESET )
 
   def logDebug(msn:String): Unit ={
     if(DEBUGMODE)
-      println(msn)
+      println( Console.RED + msn + Console.RESET )
   }
 
   def logDebug( op: => Unit ): Unit ={
     if(DEBUGMODE) {
       val stream = new java.io.ByteArrayOutputStream()
       Console.withOut(stream) { op }
-      println(stream.toString)
+      println( Console.RED + stream.toString + Console.RESET )
       stream.close()
     }
   }

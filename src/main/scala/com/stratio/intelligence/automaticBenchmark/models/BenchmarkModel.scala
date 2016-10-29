@@ -1,7 +1,7 @@
 package com.stratio.intelligence.automaticBenchmark.models
 
 import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, Fold}
-import com.stratio.intelligence.automaticBenchmark.result.{BenchmarkResult, AbmBinaryClassificationMetrics, AbmMetrics}
+import com.stratio.intelligence.automaticBenchmark.results.{BenchmarkResult, AbmBinaryClassificationMetrics, AbmMetrics}
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -11,20 +11,22 @@ abstract class BenchmarkModel {
 
   protected var modelParameters:ModelParameters = _
 
+  val MODEL_NAME:String
+
   def executeBenchmark( dataset:AbmDataset, iterNumber:Integer, folds:Array[Fold] ): Array[BenchmarkResult] ={
 
     val iterationResults: Array[BenchmarkResult] =
-      folds.map(fold => {
+      folds.map( fold => {
 
         val trainData = adecuateData( dataset, fold.testDf  )
         val testData  = adecuateData( dataset, fold.trainDf )
 
-        train(trainData)
+        train( dataset,trainData )
         val predictions: RDD[(Double, Double)] = predict( testData )
 
         val metrics: AbmMetrics = getMetrics( predictions )
 
-        BenchmarkResult(iterNumber, fold, this, metrics)
+        BenchmarkResult( dataset.fileName,iterNumber, fold, this, metrics )
       })
 
     iterationResults
@@ -35,7 +37,7 @@ abstract class BenchmarkModel {
 
   def adecuateData( dataset:AbmDataset, fold:DataFrame ):Any
   def setParameters( modelParams:ModelParameters )
-  def train[T]( data:T )
+  def train[T]( dataset:AbmDataset, data:T )
   def predict[T]( data:T ):RDD[(Double,Double)]
 
   def getMetrics( predictionsAndLabels:RDD[(Double,Double)] ):AbmMetrics = {

@@ -21,16 +21,34 @@ case class AbmDataset(){
     var numericalFeatures: Array[String] = Array[String]()
 
   // Categorical features
+    // · Raw categorical features (encoded as strings)
     var categoricalFeatures: Array[String] = Array[String]()
+    // · Indexed categorical features (encoded as doubles)
     var indexedCategoricalFeatures: Array[String] = Array[String]()
+    // · Vectorized categorical features (encoded as binary vector, oneHot encoding)
     var oneHotCategoricalFeatures: Array[String] = Array[String]()
 
+    // Dictionary with all the information about transformed categorical features
+    var transformedCategoricalDict:Map[(String,String),Map[Double,String]] = Map[(String,String),Map[Double,String]]()
 
   def hasCategoricalFeats: Boolean = categoricalFeatures.length > 0
 
-  // TODO
   def getSummary():String = {
-    ""
+    s""" ---------------------------------------------------------------------------
+       |  Dataset: ${fileName}
+       | --------------------------------------------------------------------------
+       |
+       |  · Label column: $labelColumn
+       |    - Positive value: $positiveLabelValue
+       |  . Numerical features:
+       |      ${numericalFeatures.mkString(",")}
+       |  . Categorical features:
+       |      ${categoricalFeatures.mkString(",")}
+       |
+       |  - Number of samples: ${df.count()}
+       |  - Samples by class: ${df.groupBy(labelColumn).count().collect().mkString(",")}
+       |
+     """.stripMargin
   }
 
 }
