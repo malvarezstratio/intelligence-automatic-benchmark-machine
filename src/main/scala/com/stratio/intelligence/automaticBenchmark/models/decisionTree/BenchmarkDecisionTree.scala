@@ -3,7 +3,6 @@ package com.stratio.intelligence.automaticBenchmark.models.decisionTree
 import com.stratio.intelligence.automaticBenchmark.AutomaticBenchmarkMachine
 import com.stratio.intelligence.automaticBenchmark.dataset.AbmDataset
 import com.stratio.intelligence.automaticBenchmark.models.{BenchmarkModel, ModelParameters}
-import org.apache.spark.SparkContext
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -14,7 +13,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
 
-class BenchmarkDecisionTree( sc:SparkContext ) extends BenchmarkModel{
+class BenchmarkDecisionTree extends BenchmarkModel{
 
   val IMPURITY_ENTROPY  = "entropy"
   val IMPURITY_VARIANCE = "variance"

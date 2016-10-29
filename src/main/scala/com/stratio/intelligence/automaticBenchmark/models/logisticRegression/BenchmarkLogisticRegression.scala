@@ -2,7 +2,6 @@ package com.stratio.intelligence.automaticBenchmark.models.logisticRegression
 
 import com.stratio.intelligence.automaticBenchmark.dataset.AbmDataset
 import com.stratio.intelligence.automaticBenchmark.models.{BenchmarkModel, ModelParameters}
-import org.apache.spark.SparkContext
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.mllib.classification.{LogisticRegressionModel, LogisticRegressionWithLBFGS}
 import org.apache.spark.mllib.linalg.Vector
@@ -11,7 +10,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
-class BenchmarkLogisticRegression( sc:SparkContext ) extends BenchmarkModel{
+class BenchmarkLogisticRegression extends BenchmarkModel{
 
   override val MODEL_NAME: String = "Logistic regression"
 
