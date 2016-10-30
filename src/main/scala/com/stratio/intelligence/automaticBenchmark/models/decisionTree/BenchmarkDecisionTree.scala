@@ -9,27 +9,37 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.mllib.tree.model.DecisionTreeModel
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{UserDefinedFunction, DataFrame}
 import org.apache.spark.sql.functions._
 
 
 class BenchmarkDecisionTree extends BenchmarkModel{
 
+  // Model name
   override val MODEL_NAME: String = "Decision tree"
 
-  private var trainedModel: DecisionTreeModel = _
-  modelParameters = DTParams()
-
+  // Categorical features required pre-processing steps
   override def categoricalAsIndex: Boolean = true
   override def categoricalAsBinaryVector: Boolean = false
 
-  override def setParameters(modelParams: ModelParameters): Unit = {
+  // Parameters of the model
+  modelParameters = DTParams()
+
+  // Categorical features map (required for training the model):
+  //  · Map[ Index of the categorical feat. in the input features vector, Number of categories ]
+  var categoricalFeaturesInfo:Map[Int,Int] = _
+
+  /** Sets the model parameters */
+  override def setParameters(modelParams: ModelParameters):BenchmarkModel  = {
     modelParams match {
       case m:DTParams => this.modelParameters = m
       case _ => println("Error")
     }
+
+    this
   }
 
+  /** Transforms the input fold in order to get the correct data and format for the training/testing method */
   override def adequateData(dataset: AbmDataset, fold: DataFrame ): Any = {
 
     // Selecting label, numeric features and indexed categorical variables
@@ -37,7 +47,7 @@ class BenchmarkDecisionTree extends BenchmarkModel{
     val features: Array[String] = dataset.numericalFeatures ++ dataset.indexedCategoricalFeatures
 
     // Transforming dataframe with selected features and label to a RDD[LabeledPoint]
-    val toDenseVector = udf( (x:Vector) => x.toDense )
+    val toDenseVector: UserDefinedFunction = udf((x:Vector) => x.toDense )
     val vAssembler = new VectorAssembler().setInputCols(features).setOutputCol("vectorizedFeatures")
 
     val rdd: RDD[LabeledPoint] = vAssembler.transform( fold )
@@ -46,25 +56,25 @@ class BenchmarkDecisionTree extends BenchmarkModel{
         new LabeledPoint(row.getAs[Double](label),row.getAs[Vector]("denseVectorFeatures") )
       })
 
-    rdd
-  }
-
-  // TODO Mejorar el conteo de posibles categorias para cada variable categorica
-  override def train[T]( dataset:AbmDataset, data: T): Unit = {
-
-    val features: Array[String] = dataset.numericalFeatures ++ dataset.indexedCategoricalFeatures
+    // Constructing indexed categorical features Map
     val numFeatures = features.length
 
-    val categoricalFeaturesInfo: Map[Int, Int] =
+    categoricalFeaturesInfo =
       (dataset.numericalFeatures.length until numFeatures).map( i => {
         val indexedCatFeat: String = features(i)
         val numberOfCategories: Int =
           dataset.transformedCategoricalDict.getOrElse(
-          (indexedCatFeat.replaceAll(s"${AutomaticBenchmarkMachine.INDEXED_CAT_SUFFIX}$$",""),indexedCatFeat)
-          , Map[Double,String]()
-        ).size
+            (indexedCatFeat.replaceAll(s"${AutomaticBenchmarkMachine.INDEXED_CAT_SUFFIX}$$",""),indexedCatFeat)
+            , Map[Double,String]()
+          ).size
         (i,numberOfCategories)
       }).toMap
+
+    rdd
+  }
+
+
+  override def train[T]( dataset:AbmDataset, data: T): Unit = {
 
     trainedModel =
       DecisionTree.trainClassifier(
@@ -79,16 +89,10 @@ class BenchmarkDecisionTree extends BenchmarkModel{
 
   override def predict[T](data: T): RDD[(Double,Double)] = {
 
-    val model = this.trainedModel
-    data match {
-      case testRDD:RDD[LabeledPoint] => {
-        testRDD.map{ case LabeledPoint(label:Double, features:Vector) => (label, model.predict(features) )}
-      }
-      case _ =>{
-        println("Error")
-        null
-      }
-    }
+    val model = this.trainedModel.asInstanceOf[DecisionTreeModel]
+    data.asInstanceOf[RDD[LabeledPoint]].map{
+      case LabeledPoint(label:Double, features:Vector) => (label, model.predict(features)
+    )}
   }
 
 }

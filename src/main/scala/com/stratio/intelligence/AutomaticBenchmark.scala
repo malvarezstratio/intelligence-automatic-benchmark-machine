@@ -2,8 +2,8 @@ package com.stratio.intelligence
 
 import com.stratio.intelligence.automaticBenchmark.AutomaticBenchmarkMachine
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
-import com.stratio.intelligence.automaticBenchmark.models.decisionTree.BenchmarkDecisionTree
-import com.stratio.intelligence.automaticBenchmark.models.logisticModelTree.BenchmarkLMT
+import com.stratio.intelligence.automaticBenchmark.models.decisionTree.{DTParams, BenchmarkDecisionTree}
+import com.stratio.intelligence.automaticBenchmark.models.logisticModelTree.{LMTParams, BenchmarkLMT}
 import com.stratio.intelligence.automaticBenchmark.models.logisticRegression.BenchmarkLogisticRegression
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
@@ -11,13 +11,16 @@ import org.apache.spark.{SparkConf, SparkContext}
 object AutomaticBenchmark extends App {
 
   // Create sparkContext and sqlContext
-  val conf = new SparkConf().setAppName("Automatic Benchmark Machine").setMaster("local[*]")
+  val conf = new SparkConf().setAppName("Automatic Benchmark Machine")
+    .setMaster("local")
+    .set("spark.executor.memory", "8g")
+    .set("spark.driver.memory", "8g")
   val sc = new SparkContext(conf)
   sc.setLogLevel("ERROR")
   val sqlContext = new SQLContext(sc)
 
   // Data files and description files
-  /*
+
     // HDFS data files
       val datafile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit-cards-no-header.data"
       val descriptionfile1 = "hdfs://144.76.3.23:54310/data/benchmarks/default_credit_cards/default-credit.description"
@@ -33,18 +36,16 @@ object AutomaticBenchmark extends App {
 
       val datafile5 = "hdfs://144.76.3.23:54310/data/benchmarks/pima-indians/pima-indians-full.csv"
       val descriptionfile5 = "hdfs://144.76.3.23:54310/data/benchmarks/pima-indians/pima-indians-full.description"
-    */
+
 
   // LOCAL data files
-  val datafile1 = "./src/main/resources/diagnosis.csv"
-  val descriptionfile1 = "./src/main/resources/diagnosis.description"
+  /*
+    val datafile1 = "./src/main/resources/diagnosis.csv"
+    val descriptionfile1 = "./src/main/resources/diagnosis.description"
 
-  val datafile2 = "hdfs://144.76.3.23:54310/data/benchmarks/bank/bank.csv"
-  val descriptionfile2 = "hdfs://144.76.3.23:54310/data/benchmarks/bank/bank.description"
-
-  // val datafile2 = "./src/main/resources/bank.csv"
-  // val descriptionfile2 = "./src/main/resources/bank.description"
-
+    val datafile2 = "./src/main/resources/bank.csv"
+    val descriptionfile2 = "./src/main/resources/bank.description"
+  */
 
   // New Automatic Bechmark Machine
     val abm = new AutomaticBenchmarkMachine(sqlContext)
@@ -53,13 +54,31 @@ object AutomaticBenchmark extends App {
   // Defining models
     val models:Array[BenchmarkModel] = Array(
       new BenchmarkLogisticRegression(),
-      new BenchmarkDecisionTree(),
+      new BenchmarkDecisionTree()
+        .setParameters( {
+            val params = DTParams()
+            params.maxBins = 100
+            params
+          }
+        ),
       new BenchmarkLMT()
+        .setParameters( {
+            val params = LMTParams()
+            params.maxBins = 100
+            params
+          }
+        )
     )
 
   // Executing the benchmarking process
     abm.run(
-      dataAndDescriptionFiles = Array( (datafile2,descriptionfile2) ),
+      dataAndDescriptionFiles =
+        Array(
+          (datafile2,descriptionfile2),
+          (datafile3,descriptionfile3),
+          (datafile4,descriptionfile4),
+          (datafile5,descriptionfile5)
+        ),
       outputFile = "myoutput.txt",
       seed = 11,
       kfolds = 3,

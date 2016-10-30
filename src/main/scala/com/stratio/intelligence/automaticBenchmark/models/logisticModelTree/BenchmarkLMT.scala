@@ -14,21 +14,31 @@ import org.apache.spark.sql.functions._
 
 class BenchmarkLMT extends BenchmarkModel{
 
+  // Model name
   override val MODEL_NAME: String = "Logistic Model Tree"
-  modelParameters = LMTParams()
 
-  var trainedModel: DecisionTreeModelLmt = _
-
+  // Categorical features required pre-processing steps
   override def categoricalAsIndex: Boolean = true
   override def categoricalAsBinaryVector: Boolean = true
 
-  override def setParameters( modelParams: ModelParameters ): Unit = {
+  // Parameters of the model
+  modelParameters = LMTParams()
+
+  // Categorical features map (required for training the model):
+  //  · Map[ Index of the categorical feat. in the input features vector, Number of categories ]
+  var categoricalFeaturesInfo:Map[Int,Int] = _
+
+  /** Sets the model parameters */
+  override def setParameters( modelParams: ModelParameters ): BenchmarkModel = {
     modelParams match {
       case m:LMTParams => this.modelParameters = m
       case _ => print("Error")
     }
+
+    this
   }
 
+  /** Transforms the input fold in order to get the correct data and format for the training/testing method */
   override def adequateData(dataset: AbmDataset, fold: DataFrame): Any = {
 
     // Helper UDF -> Assures than a Vector column is a denseVector
@@ -41,11 +51,11 @@ class BenchmarkLMT extends BenchmarkModel{
 
     // Transforming dataframe with selected features and label to a RDD[LabeledPointLmt]
 
-      // Vector assembler of features with indexed categorical
+      // · Vector assembler of features with indexed categorical
         val vAssemblerWithIndexedCategorical = new VectorAssembler()
             .setInputCols( featuresWithIndexedCategorical )
             .setOutputCol( "vectorizedFeatsWithIndexedCat" )
-      // Vector assembler of features with oneHot categorical
+      // · Vector assembler of features with oneHot categorical
         val vAssemblerWithOneHotCategorical = new VectorAssembler()
           .setInputCols( featuresWithOneHotCategorical )
           .setOutputCol( "vectorizedFeatsWithOneHotCat" )
@@ -68,28 +78,28 @@ class BenchmarkLMT extends BenchmarkModel{
         )
       })
 
+    // Constructing indexed categorical features Map
+      val numFeatures = featuresWithIndexedCategorical.length
+
+      categoricalFeaturesInfo =
+        (dataset.numericalFeatures.length until numFeatures).map( i => {
+          val indexedCatFeat: String = featuresWithIndexedCategorical(i)
+          val numberOfCategories: Int =
+            dataset.transformedCategoricalDict.getOrElse(
+              (indexedCatFeat.replaceAll(s"${AutomaticBenchmarkMachine.INDEXED_CAT_SUFFIX}$$",""),indexedCatFeat)
+              , Map[Double,String]()
+            ).size
+          (i,numberOfCategories)
+        }).toMap
+
     rdd
   }
 
 
   override def train[T](dataset: AbmDataset, data: T): Unit = {
 
-    val features: Array[String] = dataset.numericalFeatures ++ dataset.indexedCategoricalFeatures
-    val numFeatures = features.length
-
-    val categoricalFeaturesInfo: Map[Int, Int] =
-      (dataset.numericalFeatures.length until numFeatures).map( i => {
-        val indexedCatFeat: String = features(i)
-        val numberOfCategories: Int =
-          dataset.transformedCategoricalDict.getOrElse(
-            (indexedCatFeat.replaceAll(s"${AutomaticBenchmarkMachine.INDEXED_CAT_SUFFIX}$$",""),indexedCatFeat)
-            , Map[Double,String]()
-          ).size
-        (i,numberOfCategories)
-      }).toMap
-
     // TODO - Parameters of each case?? Training dependant of pruning strategy
-    trainedModel=
+    trainedModel =
       modelParameters.asInstanceOf[LMTParams].pruningType match {
         case LMTParams.PRUNING_TYPE_VALIDATION =>
           DecisionTreeLmt.trainClassifierWithValidation(
@@ -133,16 +143,12 @@ class BenchmarkLMT extends BenchmarkModel{
 
   override def predict[T](data: T): RDD[(Double, Double)] = {
 
-    val model = this.trainedModel
-    data match {
-      case testRDD: RDD[LabeledPointLmt] =>
-        testRDD.map {
-          case LabeledPointLmt(label: Double, featWithIndexedCat: Vector, featWithOneHotCat: Vector) =>
-            (label, model.predictWithLogisticFeatures(featWithIndexedCat, featWithOneHotCat))
-        }
-      case _ =>
-        println("Error")
-        null
-    }
+    val model = this.trainedModel.asInstanceOf[DecisionTreeModelLmt]
+    val a =
+      data.asInstanceOf[RDD[LabeledPointLmt]].map {
+      case LabeledPointLmt(label: Double, featWithIndexedCat: Vector, featWithOneHotCat: Vector) =>
+        (label, model.predictWithLogisticFeatures(featWithIndexedCat, featWithOneHotCat))    }
+
+    a
   }
 }

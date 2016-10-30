@@ -21,7 +21,7 @@ object DatasetReader {
 
       // · Reading data file
         abmDataset.df = sqlContext.read.format( "com.databricks.spark.csv" )
-          .option("header", "false").schema(abmDataset.dfSchema).load(datafile)
+          .option("header", "false").schema(abmDataset.dfSchema).load(datafile).cache()
         logger.logDebug( s"=> Readed data '$datafile': " )
         logger.logDebug( abmDataset.df.show() )
 

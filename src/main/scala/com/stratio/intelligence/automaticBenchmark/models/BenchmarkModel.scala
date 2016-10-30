@@ -1,5 +1,6 @@
 package com.stratio.intelligence.automaticBenchmark.models
 
+import com.stratio.intelligence.automaticBenchmark.AutomaticBenchmarkMachineLogger
 import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, Fold}
 import com.stratio.intelligence.automaticBenchmark.results.{BenchmarkResult, AbmBinaryClassificationMetrics, AbmMetrics}
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
@@ -9,36 +10,85 @@ import org.apache.spark.sql.DataFrame
 
 abstract class BenchmarkModel {
 
-  protected var modelParameters:ModelParameters = _
+  // Logger
+  val logger = AutomaticBenchmarkMachineLogger
 
+  // Model name
   val MODEL_NAME:String
 
+  // Categorical features required pre-processing steps
+  def categoricalAsIndex: Boolean
+  def categoricalAsBinaryVector:Boolean
+
+  // Parameters of the model
+  protected var modelParameters:ModelParameters = _
+
+  // Trained model
+  protected var trainedModel: Any = _
+
+
+  /** Sets the model parameters */
+  def setParameters( modelParams:ModelParameters ): BenchmarkModel
+
+  /** Transforms the input fold in order to get the correct data and format for the training/testing method */
+  def adequateData( dataset:AbmDataset, fold:DataFrame ):Any
+
+  /** Executes an iteration of the benchmark: train/test evaluation using a series of folds */
   def executeBenchmark( dataset:AbmDataset, iterNumber:Integer, folds:Array[Fold] ): Array[BenchmarkResult] ={
 
+    logger.logInfo(s"${this.MODEL_NAME} => Executing benchmark for dataset ${dataset.fileName}: Iter=${iterNumber}")
+
+    // For each fold ...
     val iterationResults: Array[BenchmarkResult] =
       folds.map( fold => {
 
-        val trainData = adequateData( dataset, fold.testDf  )
-        val testData  = adequateData( dataset, fold.trainDf )
+        // Getting training and testing data
+          logger.logInfo(s"\t· Pre-processing train/test data:")
+          val trainData = adequateData( dataset, fold.testDf  )
+          val testData  = adequateData( dataset, fold.trainDf )
 
-        train( dataset,trainData )
+        // Train model with training data
+        logger.logInfo(s"\t· Training model:")
+          trainData match {
+            case trainDf:DataFrame => logger.logInfo(s"\t\t· Persisting Dataframe"); trainDf.persist()
+            case trainRDD:RDD[Any] => logger.logInfo(s"\t\t· Persisting RDD");       trainRDD.persist()
+            case _                 => println("Error")
+          }
+          logger.logInfo(s"\t\t· Training...");
+          val trainingTime = measureTrainingTime( train( dataset,trainData ) )
+          trainData match {
+            case trainDf:DataFrame => logger.logInfo(s"\t\t· Unpersisting Dataframe"); trainDf.unpersist(true)
+            case trainRDD:RDD[Any] => logger.logInfo(s"\t\t· Unpersisting RDD");       trainRDD.unpersist(true)
+            case _                 => println("Error")
+          }
+
+        // Testing model with testing data
+        logger.logInfo(s"\t· Getting predictions:")
         val predictions: RDD[(Double, Double)] = predict( testData )
 
+        // Measure the trained model performance
+        logger.logInfo(s"\t· Getting performance metrics:")
         val metrics: AbmMetrics = getMetrics( predictions )
 
-        BenchmarkResult( dataset.fileName,iterNumber, fold, this, metrics )
+        logger.logDebug( metrics.getSummary() )
+
+        BenchmarkResult( dataset.fileName, iterNumber, fold, this, metrics, trainingTime )
       })
 
     iterationResults
   }
 
-  def categoricalAsIndex: Boolean
-  def categoricalAsBinaryVector:Boolean
+  def measureTrainingTime[A](f: => A): Double = {
+    val s = System.nanoTime
+    val ret = f
+    val timeSeconds = (System.nanoTime-s)/1e9
 
-  def adequateData(dataset:AbmDataset, fold:DataFrame ):Any
-  def setParameters( modelParams:ModelParameters )
+    timeSeconds
+  }
+
   def train[T]( dataset:AbmDataset, data:T )
   def predict[T]( data:T ):RDD[(Double,Double)]
+
 
   def getMetrics( predictionsAndLabels:RDD[(Double,Double)] ):AbmMetrics = {
 

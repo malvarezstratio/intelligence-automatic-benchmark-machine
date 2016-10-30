@@ -9,7 +9,8 @@ case class BenchmarkResult(
   iteration:Int,
   fold:Fold,
   algorithm:BenchmarkModel,
-  metrics:AbmMetrics
+  metrics:AbmMetrics,
+  trainingTime:Double
 ){
 
   def getSummary():String = {
@@ -19,6 +20,7 @@ case class BenchmarkResult(
        |    · Algorithm: ${algorithm.MODEL_NAME}
        |    · Iteration: ${iteration}
        |    · Fold: ${fold.number}
+       |    · Training time: ${trainingTime}
        |    · Metrics:
        |      ${metrics.getSummary().replaceAll("\n","\n\t\t")}
      """.stripMargin

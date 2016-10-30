@@ -14,20 +14,26 @@ class BenchmarkLogisticRegression extends BenchmarkModel{
 
   override val MODEL_NAME: String = "Logistic regression"
 
+  // Categorical features pre-processing steps
   override  def categoricalAsIndex: Boolean = true
   override  def categoricalAsBinaryVector: Boolean = true
 
-  private var trainedModel: LogisticRegressionModel = _
+  // Parameters of the model
+  modelParameters = LRParams()
+
 
   /** Sets the model parameters */
-  override def setParameters( modelParams: ModelParameters ): Unit = {
+  override def setParameters( modelParams: ModelParameters ): BenchmarkModel = {
     modelParams match {
       case m:LRParams => this.modelParameters = modelParams
       case _ => println("Error")
     }
+
+    this
   }
 
-  override def adequateData(dataset:AbmDataset, fold:DataFrame ):RDD[LabeledPoint] = {
+  /** Transforms the input fold in order to get the correct data and format for the training/testing method */
+  override def adequateData( dataset:AbmDataset, fold:DataFrame ):RDD[LabeledPoint] = {
 
     // Selecting label, numeric features and oneHot categorical variables
     val label = dataset.labelColumn
@@ -46,67 +52,15 @@ class BenchmarkLogisticRegression extends BenchmarkModel{
     rdd
   }
 
-  // TODO - Warning match RDD[LabeledPoint]
   override def train[T]( dataset:AbmDataset, data: T ): Unit = {
-    data match {
-      case trainRDD:RDD[LabeledPoint] => {
-         trainedModel = new LogisticRegressionWithLBFGS().setNumClasses(2).run( trainRDD )
-      }
-      case _ => println("Error")
-    }
+    trainedModel = new LogisticRegressionWithLBFGS().setNumClasses(2).run( data.asInstanceOf[RDD[LabeledPoint]] )
   }
 
   override def predict[T](data: T): RDD[(Double,Double)] = {
-
-    val model = this.trainedModel
-    data match {
-      case testRDD:RDD[LabeledPoint] => {
-        testRDD.map{ case LabeledPoint(label:Double, features:Vector) => (label, model.predict(features) )}
-      }
-      case _ =>{
-        println("Error")
-        null
-      }
-    }
+    val model: LogisticRegressionModel = this.trainedModel.asInstanceOf[LogisticRegressionModel]
+    data.asInstanceOf[RDD[LabeledPoint]].map{
+      case LabeledPoint(label:Double, features:Vector) => (label, model.predict(features)
+    )}
   }
-
-
-
-  /*
-  def train(miscelaneaMap: scala.collection.mutable.HashMap[String,Object]): LogisticRegressionModel ={
-
-    val trainRDD = miscelaneaMap.get(m_KEY_RDDBINARY_TRAIN).getOrElse{
-      println("ERROR: BenchmarkLogisticRegression.train in miscelaneaMap: None for key " + m_KEY_RDDBINARY_TRAIN
-        + ". Creating empty RDD.")
-
-      sc.emptyRDD[LabeledPoint] // empty RDD
-    }.asInstanceOf[RDD[LabeledPoint]]  // convert Any (as returned by the HashMap) to a specific type
-
-    val trainedModel = new LogisticRegressionWithLBFGS().setNumClasses(numClasses).run(trainRDD)
-
-    return trainedModel
-
-  }
-
-  def predict(trainedModel: LogisticRegressionModel, miscelaneaMap: scala.collection.mutable.HashMap[String,Object]):
-  RDD[(Double,Double)] = {
-
-    val testRDD = miscelaneaMap.get(m_KEY_RDDBINARY_TEST).getOrElse{
-      println("ERROR: BenchmarkLogisticRegression.predict in miscelaneaMap: None for key " + m_KEY_RDDBINARY_TEST
-        + ". Creating empty RDD.")
-
-      sc.emptyRDD[LabeledPoint] // empty RDD
-    }.asInstanceOf[RDD[LabeledPoint]]  // convert Any (as returned by the HashMap) to a specific type
-    trainedModel.clearThreshold
-    val predictionAndLabels = testRDD.map { case LabeledPoint(label, features) =>
-      val prediction = trainedModel.predict(features)
-      (prediction, label)
-    }
-    print(predictionAndLabels.first())
-
-    return predictionAndLabels
-  }
-
-  */
 
 }
