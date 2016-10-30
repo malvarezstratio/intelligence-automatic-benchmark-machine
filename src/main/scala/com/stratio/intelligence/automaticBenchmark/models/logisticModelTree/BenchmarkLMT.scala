@@ -2,10 +2,10 @@ package com.stratio.intelligence.automaticBenchmark.models.logisticModelTree
 
 import com.stratio.intelligence.automaticBenchmark.AutomaticBenchmarkMachine
 import com.stratio.intelligence.automaticBenchmark.dataset.AbmDataset
-import com.stratio.intelligence.automaticBenchmark.models.{ModelParameters, BenchmarkModel}
+import com.stratio.intelligence.automaticBenchmark.models.{BenchmarkModel, ModelParameters}
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.mllib.linalg.Vector
-import org.apache.spark.mllib.regression.{LabeledPointLmt, LabeledPoint}
+import org.apache.spark.mllib.regression.LabeledPointLmt
 import org.apache.spark.mllib.tree.DecisionTreeLmt
 import org.apache.spark.mllib.tree.model.DecisionTreeModelLmt
 import org.apache.spark.rdd.RDD
@@ -14,24 +14,22 @@ import org.apache.spark.sql.functions._
 
 class BenchmarkLMT extends BenchmarkModel{
 
-  val PRUNING_TYPE_VALIDATION = "VALIDATION_PRUNING"  // stable variable : the name starts with capital. Do not change!
-  val PRUNING_TYPE_FOLDS      = "FOLDS_PRUNING"
-  val IMPURITY_ENTROPY        = "entropy"
-  val IMPURITY_VARIANCE       = "variance"
-  val IMPURITY_GINI           = "gini"
-
   override val MODEL_NAME: String = "Logistic Model Tree"
+  modelParameters = LMTParams()
 
   var trainedModel: DecisionTreeModelLmt = _
 
   override def categoricalAsIndex: Boolean = true
   override def categoricalAsBinaryVector: Boolean = true
 
-  override def setParameters(modelParams: ModelParameters): Unit = {
-
+  override def setParameters( modelParams: ModelParameters ): Unit = {
+    modelParams match {
+      case m:LMTParams => this.modelParameters = m
+      case _ => print("Error")
+    }
   }
 
-  override def adecuateData(dataset: AbmDataset, fold: DataFrame): Any = {
+  override def adequateData(dataset: AbmDataset, fold: DataFrame): Any = {
 
     // Helper UDF -> Assures than a Vector column is a denseVector
     val toDenseVector = udf( (x:Vector) => x.toDense )
@@ -46,11 +44,11 @@ class BenchmarkLMT extends BenchmarkModel{
       // Vector assembler of features with indexed categorical
         val vAssemblerWithIndexedCategorical = new VectorAssembler()
             .setInputCols( featuresWithIndexedCategorical )
-            .setOutputCol( "vectorizedFeaturesWithIndexedCategorical" )
+            .setOutputCol( "vectorizedFeatsWithIndexedCat" )
       // Vector assembler of features with oneHot categorical
         val vAssemblerWithOneHotCategorical = new VectorAssembler()
           .setInputCols( featuresWithOneHotCategorical )
-          .setOutputCol( "vectorizedFeaturesWithOneHotCategorical" )
+          .setOutputCol( "vectorizedFeatsWithOneHotCat" )
 
     val rdd: RDD[LabeledPointLmt] =
       // All features columns in a new vector column. In this case, two vectors with indexedCat and OneHotCat
@@ -58,15 +56,15 @@ class BenchmarkLMT extends BenchmarkModel{
         vAssemblerWithIndexedCategorical.transform( fold )
       )
       // Assuring denseVector
-      .withColumn( "denseVectorFeaturesWithIndexedCategorical",
-                   toDenseVector(col("vectorizedFeaturesWithIndexedCategorical")) )
-      .withColumn( "denseVectorFeaturesWithOneHotCategorical",
-                   toDenseVector(col("vectorizedFeaturesWithOneHotCategorical")) )
+      .withColumn( "denseVectorFeatsWithIndexedCat",
+                   toDenseVector(col("vectorizedFeatsWithIndexedCat")) )
+      .withColumn( "denseVectorFeatsWithOneHotCat",
+                   toDenseVector(col("vectorizedFeatsWithOneHotCat")) )
       .map( row => {
         new LabeledPointLmt(
           row.getAs[Double](label),
-          row.getAs[Vector]("denseVectorFeaturesWithIndexedCategorical"),
-          row.getAs[Vector]("denseVectorFeaturesWithOneHotCategorical")
+          row.getAs[Vector]("denseVectorFeatsWithIndexedCat"),
+          row.getAs[Vector]("denseVectorFeatsWithOneHotCat")
         )
       })
 
@@ -90,38 +88,61 @@ class BenchmarkLMT extends BenchmarkModel{
         (i,numberOfCategories)
       }).toMap
 
-     trainedModel =
-       DecisionTreeLmt.trainClassifierWithValidation(
-        data.asInstanceOf[RDD[LabeledPointLmt]],
-        2,
-        categoricalFeaturesInfo,
-        IMPURITY_GINI,
-        10,
-         20,
-        -1,
-        pruningRatio=0.1,
-        prune = "AUC",
-        minElements = 2000,
-        seed=1,
-        debugConsole=true
-      )
+    // TODO - Parameters of each case?? Training dependant of pruning strategy
+    trainedModel=
+      modelParameters.asInstanceOf[LMTParams].pruningType match {
+        case LMTParams.PRUNING_TYPE_VALIDATION =>
+          DecisionTreeLmt.trainClassifierWithValidation(
+            data.asInstanceOf[RDD[LabeledPointLmt]],
+            2,
+            categoricalFeaturesInfo,
+            modelParameters.asInstanceOf[LMTParams].impurity,
+            modelParameters.asInstanceOf[LMTParams].maxDepth,
+            modelParameters.asInstanceOf[LMTParams].maxBins,
+            modelParameters.asInstanceOf[LMTParams].numLocalRegression,
+            modelParameters.asInstanceOf[LMTParams].pruningRatio,
+            modelParameters.asInstanceOf[LMTParams].weights,
+            modelParameters.asInstanceOf[LMTParams].seed,
+            modelParameters.asInstanceOf[LMTParams].costFunction,
+            modelParameters.asInstanceOf[LMTParams].prune,
+            modelParameters.asInstanceOf[LMTParams].numFolds,
+            modelParameters.asInstanceOf[LMTParams].minElements,
+            modelParameters.asInstanceOf[LMTParams].debugConsole
+          )
 
+        case LMTParams.PRUNING_TYPE_FOLDS =>
+          DecisionTreeLmt.trainClassifierWithValidation(
+            data.asInstanceOf[RDD[LabeledPointLmt]],
+            2,
+            categoricalFeaturesInfo,
+            modelParameters.asInstanceOf[LMTParams].impurity,
+            modelParameters.asInstanceOf[LMTParams].maxDepth,
+            modelParameters.asInstanceOf[LMTParams].maxBins,
+            modelParameters.asInstanceOf[LMTParams].numLocalRegression,
+            modelParameters.asInstanceOf[LMTParams].pruningRatio,
+            modelParameters.asInstanceOf[LMTParams].weights,//
+            modelParameters.asInstanceOf[LMTParams].seed,
+            modelParameters.asInstanceOf[LMTParams].costFunction,//
+            modelParameters.asInstanceOf[LMTParams].prune,
+            modelParameters.asInstanceOf[LMTParams].numFolds,//
+            modelParameters.asInstanceOf[LMTParams].minElements,
+            modelParameters.asInstanceOf[LMTParams].debugConsole
+          )
+      }
   }
 
   override def predict[T](data: T): RDD[(Double, Double)] = {
 
     val model = this.trainedModel
     data match {
-      case testRDD: RDD[LabeledPointLmt] => {
+      case testRDD: RDD[LabeledPointLmt] =>
         testRDD.map {
           case LabeledPointLmt(label: Double, featWithIndexedCat: Vector, featWithOneHotCat: Vector) =>
             (label, model.predictWithLogisticFeatures(featWithIndexedCat, featWithOneHotCat))
         }
-      }
-      case _ => {
+      case _ =>
         println("Error")
         null
-      }
     }
   }
 }

@@ -15,22 +15,22 @@ import org.apache.spark.sql.functions._
 
 class BenchmarkDecisionTree extends BenchmarkModel{
 
-  val IMPURITY_ENTROPY  = "entropy"
-  val IMPURITY_VARIANCE = "variance"
-  val IMPURITY_GINI     = "gini"
+  override val MODEL_NAME: String = "Decision tree"
 
   private var trainedModel: DecisionTreeModel = _
-
-  override val MODEL_NAME: String = "Decision tree"
+  modelParameters = DTParams()
 
   override def categoricalAsIndex: Boolean = true
   override def categoricalAsBinaryVector: Boolean = false
 
   override def setParameters(modelParams: ModelParameters): Unit = {
-
+    modelParams match {
+      case m:DTParams => this.modelParameters = m
+      case _ => println("Error")
+    }
   }
 
-  override def adecuateData( dataset: AbmDataset, fold: DataFrame ): Any = {
+  override def adequateData(dataset: AbmDataset, fold: DataFrame ): Any = {
 
     // Selecting label, numeric features and indexed categorical variables
     val label = dataset.labelColumn
@@ -69,11 +69,11 @@ class BenchmarkDecisionTree extends BenchmarkModel{
     trainedModel =
       DecisionTree.trainClassifier(
         data.asInstanceOf[RDD[LabeledPoint]],
-        numClasses=2,
+        numClasses = 2,
         categoricalFeaturesInfo,
-        impurity = IMPURITY_GINI,
-        maxDepth = 10,
-        maxBins  = 30
+        impurity = modelParameters.asInstanceOf[DTParams].impurity,
+        maxDepth = modelParameters.asInstanceOf[DTParams].maxDepth,
+        maxBins  = modelParameters.asInstanceOf[DTParams].maxBins
       )
   }
 
@@ -90,10 +90,5 @@ class BenchmarkDecisionTree extends BenchmarkModel{
       }
     }
   }
-
-
-
-
-
 
 }

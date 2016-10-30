@@ -18,8 +18,8 @@ abstract class BenchmarkModel {
     val iterationResults: Array[BenchmarkResult] =
       folds.map( fold => {
 
-        val trainData = adecuateData( dataset, fold.testDf  )
-        val testData  = adecuateData( dataset, fold.trainDf )
+        val trainData = adequateData( dataset, fold.testDf  )
+        val testData  = adequateData( dataset, fold.trainDf )
 
         train( dataset,trainData )
         val predictions: RDD[(Double, Double)] = predict( testData )
@@ -35,7 +35,7 @@ abstract class BenchmarkModel {
   def categoricalAsIndex: Boolean
   def categoricalAsBinaryVector:Boolean
 
-  def adecuateData( dataset:AbmDataset, fold:DataFrame ):Any
+  def adequateData(dataset:AbmDataset, fold:DataFrame ):Any
   def setParameters( modelParams:ModelParameters )
   def train[T]( dataset:AbmDataset, data:T )
   def predict[T]( data:T ):RDD[(Double,Double)]

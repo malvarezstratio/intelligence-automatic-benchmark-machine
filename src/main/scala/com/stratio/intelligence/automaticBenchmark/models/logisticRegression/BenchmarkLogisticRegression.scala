@@ -22,12 +22,12 @@ class BenchmarkLogisticRegression extends BenchmarkModel{
   /** Sets the model parameters */
   override def setParameters( modelParams: ModelParameters ): Unit = {
     modelParams match {
-      case m:LogisticRegressionParams => this.modelParameters = modelParams
+      case m:LRParams => this.modelParameters = modelParams
       case _ => println("Error")
     }
   }
 
-  override def adecuateData( dataset:AbmDataset, fold:DataFrame ):RDD[LabeledPoint] = {
+  override def adequateData(dataset:AbmDataset, fold:DataFrame ):RDD[LabeledPoint] = {
 
     // Selecting label, numeric features and oneHot categorical variables
     val label = dataset.labelColumn
@@ -46,7 +46,7 @@ class BenchmarkLogisticRegression extends BenchmarkModel{
     rdd
   }
 
-  // TODO
+  // TODO - Warning match RDD[LabeledPoint]
   override def train[T]( dataset:AbmDataset, data: T ): Unit = {
     data match {
       case trainRDD:RDD[LabeledPoint] => {
