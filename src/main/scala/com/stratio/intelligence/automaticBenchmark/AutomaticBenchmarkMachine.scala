@@ -71,6 +71,8 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
           }
 
         // => Iterations
+        abmDataset.df.cache()
+
         val benchmarkResults: Array[BenchmarkResult] =
           ( 1 to mtimesFolds).flatMap( nIter => {
 
@@ -83,6 +85,9 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
                 )
               modelResult
           }).toArray
+
+        abmDataset.df.unpersist()
+
 
         benchmarkResults
       }

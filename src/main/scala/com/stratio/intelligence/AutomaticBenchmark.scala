@@ -10,6 +10,13 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 object AutomaticBenchmark extends App {
 
+  // TODO - Parametrizar la eliminacion o no de una de las categorias en el One Hot
+  // TODO - Generalizar a clasificacion multiclase/regression
+  // TODO - Mejorar los parámetros de los modelos  new ModelParam().setX().setY()...
+  // TODO - Incluir el código del LMT en vez del JAR
+  // BUG - LMT con Weka - Pima.csv
+
+
   // Create sparkContext and sqlContext
   val conf = new SparkConf().setAppName("Automatic Benchmark Machine")
     .setMaster("local")
@@ -39,13 +46,13 @@ object AutomaticBenchmark extends App {
 
 
   // LOCAL data files
-  /*
+    /*
     val datafile1 = "./src/main/resources/diagnosis.csv"
     val descriptionfile1 = "./src/main/resources/diagnosis.description"
 
     val datafile2 = "./src/main/resources/bank.csv"
     val descriptionfile2 = "./src/main/resources/bank.description"
-  */
+    */
 
   // New Automatic Bechmark Machine
     val abm = new AutomaticBenchmarkMachine(sqlContext)
@@ -53,7 +60,7 @@ object AutomaticBenchmark extends App {
 
   // Defining models
     val models:Array[BenchmarkModel] = Array(
-      new BenchmarkLogisticRegression(),
+      /* new BenchmarkLogisticRegression(),
       new BenchmarkDecisionTree()
         .setParameters( {
             val params = DTParams()
@@ -61,10 +68,13 @@ object AutomaticBenchmark extends App {
             params
           }
         ),
+      */
       new BenchmarkLMT()
         .setParameters( {
             val params = LMTParams()
             params.maxBins = 100
+            params.debugConsole = true
+            params.minElements  = 100000000
             params
           }
         )
@@ -74,10 +84,10 @@ object AutomaticBenchmark extends App {
     abm.run(
       dataAndDescriptionFiles =
         Array(
-          (datafile2,descriptionfile2),
-          (datafile3,descriptionfile3),
-          (datafile4,descriptionfile4),
-          (datafile5,descriptionfile5)
+          // (datafile2,descriptionfile2)
+          // (datafile3,descriptionfile3),
+          // (datafile4,descriptionfile4),
+          (datafile4,descriptionfile4)
         ),
       outputFile = "myoutput.txt",
       seed = 11,

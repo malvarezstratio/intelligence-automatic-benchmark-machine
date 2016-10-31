@@ -2,7 +2,7 @@ package com.stratio.intelligence.automaticBenchmark.models
 
 import com.stratio.intelligence.automaticBenchmark.AutomaticBenchmarkMachineLogger
 import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, Fold}
-import com.stratio.intelligence.automaticBenchmark.results.{BenchmarkResult, AbmBinaryClassificationMetrics, AbmMetrics}
+import com.stratio.intelligence.automaticBenchmark.results._
 import org.apache.spark.mllib.evaluation.{BinaryClassificationMetrics, MulticlassMetrics}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
@@ -42,37 +42,42 @@ abstract class BenchmarkModel {
     val iterationResults: Array[BenchmarkResult] =
       folds.map( fold => {
 
-        // Getting training and testing data
+        try {
+          // Getting training and testing data
           logger.logInfo(s"\t· Pre-processing train/test data:")
-          val trainData = adequateData( dataset, fold.testDf  )
-          val testData  = adequateData( dataset, fold.trainDf )
+          val trainData = adequateData(dataset, fold.testDf)
+          val testData = adequateData(dataset, fold.trainDf)
 
-        // Train model with training data
-        logger.logInfo(s"\t· Training model:")
-          trainData match {
-            case trainDf:DataFrame => logger.logInfo(s"\t\t· Persisting Dataframe"); trainDf.persist()
-            case trainRDD:RDD[Any] => logger.logInfo(s"\t\t· Persisting RDD");       trainRDD.persist()
-            case _                 => println("Error")
-          }
-          logger.logInfo(s"\t\t· Training...");
-          val trainingTime = measureTrainingTime( train( dataset,trainData ) )
-          trainData match {
-            case trainDf:DataFrame => logger.logInfo(s"\t\t· Unpersisting Dataframe"); trainDf.unpersist(true)
-            case trainRDD:RDD[Any] => logger.logInfo(s"\t\t· Unpersisting RDD");       trainRDD.unpersist(true)
-            case _                 => println("Error")
-          }
+          // Train model with training data
+          logger.logInfo(s"\t· Training model:")
+            trainData match {
+              case trainDf: DataFrame => logger.logInfo(s"\t\t· Persisting Dataframe"); trainDf.persist()
+              case trainRDD: RDD[Any] => logger.logInfo(s"\t\t· Persisting RDD"); trainRDD.persist()
+              case _ => println("Error")
+            }
+            logger.logInfo(s"\t\t· Training...");
+            val trainingTime = measureTrainingTime( train(dataset, trainData) )
+            trainData match {
+              case trainDf: DataFrame => logger.logInfo(s"\t\t· Unpersisting Dataframe"); trainDf.unpersist(true)
+              case trainRDD: RDD[Any] => logger.logInfo(s"\t\t· Unpersisting RDD"); trainRDD.unpersist(true)
+              case _ => println("Error")
+            }
 
-        // Testing model with testing data
-        logger.logInfo(s"\t· Getting predictions:")
-        val predictions: RDD[(Double, Double)] = predict( testData )
+          // Testing model with testing data
+          logger.logInfo(s"\t· Getting predictions:")
+          val predictions: RDD[(Double, Double)] = predict(testData)
 
-        // Measure the trained model performance
-        logger.logInfo(s"\t· Getting performance metrics:")
-        val metrics: AbmMetrics = getMetrics( predictions )
+          // Measure the trained model performance
+          logger.logInfo(s"\t· Getting performance metrics:")
+          val metrics: AbmMetrics = getMetrics(predictions)
 
-        logger.logDebug( metrics.getSummary() )
+          logger.logDebug(metrics.getSummary())
 
-        BenchmarkResult( dataset.fileName, iterNumber, fold, this, metrics, trainingTime )
+          SuccessfulBenchmarkResult(dataset.fileName, iterNumber, fold, this, metrics, trainingTime)
+
+        }catch {
+          case e:Exception => FailedBenchmarkResult(dataset.fileName, iterNumber, fold, this, e)
+        }
       })
 
     iterationResults

@@ -98,45 +98,47 @@ class BenchmarkLMT extends BenchmarkModel{
 
   override def train[T](dataset: AbmDataset, data: T): Unit = {
 
+    val lmtParams = modelParameters.asInstanceOf[LMTParams]
+
     // TODO - Parameters of each case?? Training dependant of pruning strategy
     trainedModel =
-      modelParameters.asInstanceOf[LMTParams].pruningType match {
+      lmtParams.pruningType match {
         case LMTParams.PRUNING_TYPE_VALIDATION =>
           DecisionTreeLmt.trainClassifierWithValidation(
-            data.asInstanceOf[RDD[LabeledPointLmt]],
-            2,
-            categoricalFeaturesInfo,
-            modelParameters.asInstanceOf[LMTParams].impurity,
-            modelParameters.asInstanceOf[LMTParams].maxDepth,
-            modelParameters.asInstanceOf[LMTParams].maxBins,
-            modelParameters.asInstanceOf[LMTParams].numLocalRegression,
-            modelParameters.asInstanceOf[LMTParams].pruningRatio,
-            modelParameters.asInstanceOf[LMTParams].weights,
-            modelParameters.asInstanceOf[LMTParams].seed,
-            modelParameters.asInstanceOf[LMTParams].costFunction,
-            modelParameters.asInstanceOf[LMTParams].prune,
-            modelParameters.asInstanceOf[LMTParams].numFolds,
-            modelParameters.asInstanceOf[LMTParams].minElements,
-            modelParameters.asInstanceOf[LMTParams].debugConsole
+              data.asInstanceOf[RDD[LabeledPointLmt]],
+              2,
+              categoricalFeaturesInfo,
+              lmtParams.impurity,
+              lmtParams.maxDepth,
+              lmtParams.maxBins,
+              lmtParams.numLocalRegression,
+              lmtParams.pruningRatio,
+              lmtParams.weights,
+              lmtParams.seed,
+              lmtParams.costFunction,
+              lmtParams.prune,
+              lmtParams.numFolds,
+              lmtParams.minElements,
+              lmtParams.debugConsole
           )
 
         case LMTParams.PRUNING_TYPE_FOLDS =>
-          DecisionTreeLmt.trainClassifierWithValidation(
-            data.asInstanceOf[RDD[LabeledPointLmt]],
-            2,
-            categoricalFeaturesInfo,
-            modelParameters.asInstanceOf[LMTParams].impurity,
-            modelParameters.asInstanceOf[LMTParams].maxDepth,
-            modelParameters.asInstanceOf[LMTParams].maxBins,
-            modelParameters.asInstanceOf[LMTParams].numLocalRegression,
-            modelParameters.asInstanceOf[LMTParams].pruningRatio,
-            modelParameters.asInstanceOf[LMTParams].weights,//
-            modelParameters.asInstanceOf[LMTParams].seed,
-            modelParameters.asInstanceOf[LMTParams].costFunction,//
-            modelParameters.asInstanceOf[LMTParams].prune,
-            modelParameters.asInstanceOf[LMTParams].numFolds,//
-            modelParameters.asInstanceOf[LMTParams].minElements,
-            modelParameters.asInstanceOf[LMTParams].debugConsole
+          DecisionTreeLmt.trainClassifierWithFolds(
+              data.asInstanceOf[RDD[LabeledPointLmt]],
+              2,
+              categoricalFeaturesInfo,
+              lmtParams.impurity,
+              lmtParams.maxDepth,
+              lmtParams.maxBins,
+              lmtParams.numFolds,
+              lmtParams.numLocalRegression,
+              lmtParams.pruningRatio,
+              lmtParams.seed,
+              lmtParams.costFunction,
+              lmtParams.prune,
+              lmtParams.numFoldsRegression,
+              lmtParams.minElements,
+              lmtParams.debugConsole
           )
       }
   }

@@ -4,7 +4,11 @@ import org.apache.spark.sql.DataFrame
 
 import scala.collection.immutable.IndexedSeq
 
-case class Fold( number:Int, trainDf:DataFrame, testDf:DataFrame )
+case class Fold( number:Int, trainDf:DataFrame, testDf:DataFrame ){
+
+  // TODO
+  def getSummary():String = ???
+}
 
 object Fold{
 

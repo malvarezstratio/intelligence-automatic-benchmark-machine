@@ -32,7 +32,8 @@ case class LMTParams() extends ModelParameters{
   // Folds
   var seed:Long = -1
   var weights : scala.Array[scala.Double] = Array(0.8,0.2)
-  var numFolds: Int = 5
+  var numFolds:Int = 5
+  var numFoldsRegression:Int = 5
 
 }
 
