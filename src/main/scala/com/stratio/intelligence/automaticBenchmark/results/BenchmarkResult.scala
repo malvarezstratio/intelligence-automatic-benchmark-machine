@@ -22,7 +22,7 @@ case class SuccessfulBenchmarkResult (
        |    . Dataset: ${dataset}
        |    · Algorithm: ${algorithm.MODEL_NAME}
        |    · Iteration: ${iteration}
-       |    · Fold: ${fold.number}
+       |    · Fold: ${fold.foldNumber}
        |    · Training time: ${trainingTime}
        |    · Metrics:
        |        ${metrics.getSummary().replaceAll("\n","\n\t\t")}
@@ -44,7 +44,7 @@ case class FailedBenchmarkResult (
         |    . Dataset: ${dataset}
         |    · Algorithm: ${algorithm.MODEL_NAME}
         |    · Iteration: ${iteration}
-        |    · Fold: ${fold.number}
+        |    · Fold: ${fold.foldNumber}
         |    · Exception:
         |       ${exception.getStackTraceString.replaceAll("\n","\n\t\t")}
      """.stripMargin

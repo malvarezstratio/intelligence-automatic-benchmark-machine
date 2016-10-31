@@ -77,7 +77,7 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
           ( 1 to mtimesFolds).flatMap( nIter => {
 
               // => Getting folds
-                val folds: Array[Fold] = Fold.generateFolds( abmDataset, kfolds, seed )
+                val folds: Array[Fold] = Fold.generateFolds( abmDataset, nIter, kfolds, seed )
 
               // => Iterating throught algorithms
                 val modelResult: Array[BenchmarkResult] = algorithms.flatMap( model =>

@@ -87,7 +87,7 @@ object AutomaticBenchmark extends App {
           // (datafile2,descriptionfile2)
           // (datafile3,descriptionfile3),
           // (datafile4,descriptionfile4),
-          (datafile4,descriptionfile4)
+          (datafile5,descriptionfile5)
         ),
       outputFile = "myoutput.txt",
       seed = 11,
