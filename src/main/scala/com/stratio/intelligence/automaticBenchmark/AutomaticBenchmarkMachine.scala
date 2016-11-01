@@ -4,6 +4,7 @@ import java.io.{File, PrintWriter}
 
 import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, DatasetReader, Fold}
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
+import com.stratio.intelligence.automaticBenchmark.output.{OutputConf, OutputWriter}
 import com.stratio.intelligence.automaticBenchmark.results.BenchmarkResult
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, StringIndexerModel}
 import org.apache.spark.ml.{Pipeline, PipelineModel}
@@ -26,7 +27,7 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
   /** Launches the automatic benchmarking process */
   def run(
            dataAndDescriptionFiles: Array[(String, String)],  // ("hdfs://data/mydata.csv", "hdfs://data/mydata.description")
-           outputFile: String,                                // "hdfs://myoutput.txt"
+           outputConf: OutputConf,
            seed: Long,                                        // metrics: Array[String],
            kfolds: Integer,                                   // kfolds is the k for the k-fold CV
            mtimesFolds: Integer = 1,                          // mtimesFolds is the number of times to repeat the complete k-fold CV process independently
@@ -34,12 +35,9 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
            algorithms: Array[BenchmarkModel]
   ): Unit = {
 
-    // New writer for output file
-    val writer = new PrintWriter( new File(outputFile) )
-
     // => Parse the description file of each dataset, read the dataset,
     // find out the positive label and whether there are categorical features or not
-    val dataInfo: Array[AbmDataset] = dataAndDescriptionFiles.map{
+    val datasets: Array[AbmDataset] = dataAndDescriptionFiles.map{
       case (datafile, descriptionfile) => DatasetReader.readDataAndDescription(sqlContext, datafile, descriptionfile)
     }
 
@@ -49,11 +47,11 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
 
     // => For each dataset
     val benchmarkResults: Array[BenchmarkResult] =
-      dataInfo.flatMap{ abmDataset => {
+      datasets.flatMap{ abmDataset => {
 
         logger.logInfo( s"· Processing dataset: ${abmDataset.fileName}")
         logger.logInfo( abmDataset.getSummary() )
-        writer.println( abmDataset.getSummary() )
+
 
         logger.logDebug( "=> Original dataframe: " )
         logger.logDebug( abmDataset.df .show() )
@@ -93,10 +91,11 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
       }
     } // End of iterating over datasets
 
-    benchmarkResults.foreach( x => println(x.getSummary()) )
-    benchmarkResults.foreach( x => writer.println(x.getSummary()) )
 
-    writer.close()
+    // Writing output results
+    val outputWriter = new OutputWriter(outputConf,datasets,benchmarkResults)
+      // Summary to text file
+      outputWriter.saveSummaryToFile()
   }
 
   /**  Find out which pre-processing steps are required for the set of algorithms to be run

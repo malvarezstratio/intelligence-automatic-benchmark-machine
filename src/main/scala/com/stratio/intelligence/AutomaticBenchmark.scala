@@ -5,6 +5,7 @@ import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
 import com.stratio.intelligence.automaticBenchmark.models.decisionTree.{DTParams, BenchmarkDecisionTree}
 import com.stratio.intelligence.automaticBenchmark.models.logisticModelTree.{LMTParams, BenchmarkLMT}
 import com.stratio.intelligence.automaticBenchmark.models.logisticRegression.BenchmarkLogisticRegression
+import com.stratio.intelligence.automaticBenchmark.output.OutputConf
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
@@ -15,8 +16,7 @@ object AutomaticBenchmark extends App {
   // TODO - Generalizar a clasificacion multiclase/regression
   // TODO - Mejorar los parámetros de los modelos  new ModelParam().setX().setY()...
   // TODO - Incluir el código del LMT en vez del JAR
-  // BUG - LMT con Weka - Pima.csv
-
+  // BUg - pima.indians el LMT, dependiendo de cada ejecución, puede funcionar o no. No crece hijos
 
   // Create sparkContext and sqlContext
   val conf = new SparkConf().setAppName("Automatic Benchmark Machine")
@@ -46,14 +46,14 @@ object AutomaticBenchmark extends App {
       val descriptionfile5 = "hdfs://144.76.3.23:54310/data/benchmarks/pima-indians/pima-indians-full.description"
 
 
-  // LOCAL data files
-    /*
-    val datafile1 = "./src/main/resources/diagnosis.csv"
-    val descriptionfile1 = "./src/main/resources/diagnosis.description"
+    // LOCAL data files
+      /*
+      val datafile1 = "./src/main/resources/diagnosis.csv"
+      val descriptionfile1 = "./src/main/resources/diagnosis.description"
 
-    val datafile2 = "./src/main/resources/bank.csv"
-    val descriptionfile2 = "./src/main/resources/bank.description"
-    */
+      val datafile2 = "./src/main/resources/bank.csv"
+      val descriptionfile2 = "./src/main/resources/bank.description"
+      */
 
   // New Automatic Bechmark Machine
     val abm = new AutomaticBenchmarkMachine(sqlContext)
@@ -75,7 +75,9 @@ object AutomaticBenchmark extends App {
             val params = LMTParams()
             params.maxBins = 100
             params.debugConsole = true
-            params.maxPointsForLocalRegression  = 100000000
+            params.maxPointsForLocalRegression  = 1000000
+            params.minElements = -1
+            params.seed = 12
             params
           }
         )
@@ -90,13 +92,11 @@ object AutomaticBenchmark extends App {
           // (datafile4,descriptionfile4),
           (datafile5,descriptionfile5)
         ),
-      outputFile = "myoutput.txt",
+      outputConf = OutputConf().setFilePath("myoutput.txt"),
       seed = 11,
       kfolds = 3,
       mtimesFolds = 1,
       algorithms = models
     )
-
-    Vectors.d
 
 }

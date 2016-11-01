@@ -10,22 +10,19 @@ case class Fold( abmDataset: AbmDataset,
                  testDf:DataFrame         ){
 
   def getSummary():String = {
-    s""" Fold Summary
-       | ------------------------------------------------------
-       |  · Dataset: ${abmDataset.fileName}
-       |  · Iteration number: ${numIter}
-       |  · Fold number: ${foldNumber}
-       |
-       |  · Training data:
-       |    - Num. samples: ${trainDf.count()}
-       |    - Num. samples C1: ${trainDf.where( abmDataset.labelColumn + " = 1.0" ).count()}
-       |    - Num. samples C0: ${trainDf.where( abmDataset.labelColumn + " = 0.0" ).count()}
-       |
-       |  · Testing data:
-       |    - Num. samples: ${testDf.count()}
-       |    - Num. samples C1: ${testDf.where( abmDataset.labelColumn + " = 1.0" ).count()}
-       |    - Num. samples C0: ${testDf.where( abmDataset.labelColumn + " = 0.0" ).count()}
-       |
+
+    val nT   = trainDf.count()
+    val nC1T = trainDf.where( abmDataset.labelColumn + " = 1.0" ).count()
+    val nC0T = trainDf.where( abmDataset.labelColumn + " = 0.0" ).count()
+    val nt   = testDf.count()
+    val nC1t = testDf.where( abmDataset.labelColumn + " = 1.0" ).count()
+    val nC0t = testDf.where( abmDataset.labelColumn + " = 0.0" ).count()
+
+    s""" =>Fold Summary
+       |   · Dataset: ${abmDataset.fileName}
+       |   · Iteration number: ${numIter} · Fold number: ${foldNumber}
+       |   · Training data:  - N: ${nT} - N_C1: ${nC1T}  - N_C0: ${nC0T}
+       |   · Testing data:   - N: ${nt} - N_C1: ${nC1t}  - N_C0: ${nC0t}
      """.stripMargin
   }
 }
@@ -53,17 +50,20 @@ object Fold{
     val foldsNegative: Array[DataFrame] = df_negative.randomSplit( Array.fill(nfolds)(1), seed )
 
     // Generating training and test folds
-    val folds: IndexedSeq[Fold] = (0 until nfolds).map( i =>{
+    val folds: Array[Fold] = (0 until nfolds).map( i =>{
       val trainDf = (dropEle(i,foldsPositive)++dropEle(i,foldsNegative))
         .reduce( (df1,df2) => df1.unionAll(df2) )
       val testDf  = foldsPositive(i).unionAll(foldsNegative(i))
 
       Fold( abmDataset, numIter, i, trainDf, testDf )
-    })
+    }).toArray
 
+    abmDataset.folds = abmDataset.folds :+ folds
+
+    // Debug info
     folds.foreach( f => logger.logDebug(f.getSummary()) )
 
-    folds.toArray
+    folds
   }
 
 }

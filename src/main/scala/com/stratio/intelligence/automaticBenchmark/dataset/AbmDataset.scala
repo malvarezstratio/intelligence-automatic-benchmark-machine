@@ -6,10 +6,10 @@ import org.apache.spark.sql.types.StructType
 
 case class AbmDataset(){
 
-  // DatasetPath
+  // Dataset Path
     var fileName:String = ""
 
-  // Readed dataframe
+  // Read dataframe
     var df: DataFrame = _
     var dfSchema:StructType = _
 
@@ -17,7 +17,7 @@ case class AbmDataset(){
     var labelColumn: String = ""
     var positiveLabelValue: String = ""
 
-  // Numerical featurs
+  // Numerical features
     var numericalFeatures: Array[String] = Array[String]()
 
   // Categorical features
@@ -31,9 +31,14 @@ case class AbmDataset(){
     // Dictionary with all the information about transformed categorical features
     var transformedCategoricalDict:Map[(String,String),Map[Double,String]] = Map[(String,String),Map[Double,String]]()
 
+  // Folds by iteration
+    var folds:Seq[Array[Fold]] = Seq()
+
   def hasCategoricalFeats: Boolean = categoricalFeatures.length > 0
 
   def getSummary():String = {
+
+    val saByClass = df.groupBy(labelColumn).count().collect().mkString(",")
     s""" ---------------------------------------------------------------------------
        |  Dataset: ${fileName}
        | --------------------------------------------------------------------------
@@ -43,10 +48,9 @@ case class AbmDataset(){
        |  . Numerical features:
        |      ${numericalFeatures.mkString(",")}
        |  . Categorical features:
-       |      ${categoricalFeatures.mkString(",")}
+       |      ${if (categoricalFeatures.length==0) "-Empty-" else categoricalFeatures.mkString(",")}
        |
-       |  - Number of samples: ${df.count()}
-       |  - Samples by class: ${df.groupBy(labelColumn).count().collect().mkString(",")}
+       |  - Number of samples: ${df.count()} - Samples by class (Class, Num.samples): ${saByClass}
        |
      """.stripMargin
   }

@@ -22,7 +22,7 @@ object DatasetReader {
       // · Reading data file
         abmDataset.df = sqlContext.read.format( "com.databricks.spark.csv" )
           .option("header", "false").schema(abmDataset.dfSchema).load(datafile)
-        logger.logDebug( s"=> Readed data '$datafile': " )
+        logger.logDebug( s"=> Read data '$datafile': " )
         logger.logDebug( abmDataset.df.show() )
 
       // · Getting categorical columns
@@ -63,7 +63,7 @@ object DatasetReader {
       val descriptionDf: DataFrame = sqlContext.read
           .format("com.databricks.spark.csv").option("header", "false").schema(dictionarySchema).load(file)
 
-      logger.logDebug( s"=> Readed description file '$file': " )
+      logger.logDebug( s"=> Read description file '$file': " )
       logger.logDebug( descriptionDf.show() )
 
     // Getting label column and it's positive label
