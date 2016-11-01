@@ -98,7 +98,7 @@ class BenchmarkLMT extends BenchmarkModel{
 
   override def train[T](dataset: AbmDataset, data: T): Unit = {
 
-    val lmtParams = modelParameters.asInstanceOf[LMTParams]
+    val lmtParams:LMTParams = modelParameters.asInstanceOf[LMTParams]
 
     // TODO - Parameters of each case?? Training dependant of pruning strategy
     trainedModel =
@@ -111,7 +111,7 @@ class BenchmarkLMT extends BenchmarkModel{
               lmtParams.impurity,
               lmtParams.maxDepth,
               lmtParams.maxBins,
-              lmtParams.numLocalRegression,
+              lmtParams.maxPointsForLocalRegression,
               lmtParams.pruningRatio,
               lmtParams.weights,
               lmtParams.seed,
@@ -131,12 +131,12 @@ class BenchmarkLMT extends BenchmarkModel{
               lmtParams.maxDepth,
               lmtParams.maxBins,
               lmtParams.numFolds,
-              lmtParams.numLocalRegression,
+              lmtParams.maxPointsForLocalRegression,
               lmtParams.pruningRatio,
               lmtParams.seed,
               lmtParams.costFunction,
               lmtParams.prune,
-              lmtParams.numFoldsRegression,
+              lmtParams.numFoldsCart,
               lmtParams.minElements,
               lmtParams.debugConsole
           )

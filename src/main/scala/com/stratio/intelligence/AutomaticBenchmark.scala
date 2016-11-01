@@ -5,6 +5,7 @@ import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
 import com.stratio.intelligence.automaticBenchmark.models.decisionTree.{DTParams, BenchmarkDecisionTree}
 import com.stratio.intelligence.automaticBenchmark.models.logisticModelTree.{LMTParams, BenchmarkLMT}
 import com.stratio.intelligence.automaticBenchmark.models.logisticRegression.BenchmarkLogisticRegression
+import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -74,7 +75,7 @@ object AutomaticBenchmark extends App {
             val params = LMTParams()
             params.maxBins = 100
             params.debugConsole = true
-            params.minElements  = 100000000
+            params.maxPointsForLocalRegression  = 100000000
             params
           }
         )
@@ -95,5 +96,7 @@ object AutomaticBenchmark extends App {
       mtimesFolds = 1,
       algorithms = models
     )
+
+    Vectors.d
 
 }
