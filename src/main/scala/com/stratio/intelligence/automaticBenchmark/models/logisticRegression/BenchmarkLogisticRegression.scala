@@ -53,7 +53,12 @@ class BenchmarkLogisticRegression extends BenchmarkModel{
   }
 
   override def train[T]( dataset:AbmDataset, data: T ): Unit = {
-    trainedModel = new LogisticRegressionWithLBFGS().setNumClasses(2).run( data.asInstanceOf[RDD[LabeledPoint]] )
+    val params = this.modelParameters.asInstanceOf[LRParams]
+    trainedModel =
+      new LogisticRegressionWithLBFGS()
+        .setNumClasses(2)
+        .setIntercept(params.fitIntercept)
+        .run( data.asInstanceOf[RDD[LabeledPoint]] )
   }
 
   override def predict[T](data: T): RDD[(Double,Double)] = {
@@ -61,6 +66,14 @@ class BenchmarkLogisticRegression extends BenchmarkModel{
     data.asInstanceOf[RDD[LabeledPoint]].map{
       case LabeledPoint(label:Double, features:Vector) => (label, model.predict(features)
     )}
+  }
+
+  override def getTrainedModelAsString(dataset:AbmDataset,model: Any): String = {
+    model match {
+      case m:LogisticRegressionModel =>
+        s" Intercept: ${m.intercept} Betas: ${m.weights.toArray.mkString(", ")}"
+      case _ => "Error"
+    }
   }
 
 }

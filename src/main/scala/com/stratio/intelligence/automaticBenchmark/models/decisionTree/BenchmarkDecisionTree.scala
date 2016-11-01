@@ -95,4 +95,12 @@ class BenchmarkDecisionTree extends BenchmarkModel{
     )}
   }
 
+  override def getTrainedModelAsString(dataset:AbmDataset,model: Any):String = {
+    model match {
+      case m:DecisionTreeModel =>
+        m.toDebugString
+      case _ => "Error"
+    }
+  }
+
 }

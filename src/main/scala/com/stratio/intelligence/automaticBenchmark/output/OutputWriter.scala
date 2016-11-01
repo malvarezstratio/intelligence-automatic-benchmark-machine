@@ -4,7 +4,7 @@ import java.io.{File, PrintWriter}
 
 import com.stratio.intelligence.automaticBenchmark.AutomaticBenchmarkMachineLogger
 import com.stratio.intelligence.automaticBenchmark.dataset.AbmDataset
-import com.stratio.intelligence.automaticBenchmark.results.BenchmarkResult
+import com.stratio.intelligence.automaticBenchmark.results.{SuccessfulBenchmarkResult, BenchmarkResult}
 
 
 class OutputWriter( outputConf: OutputConf,
@@ -26,7 +26,20 @@ class OutputWriter( outputConf: OutputConf,
     })
 
     // Writing benchmark results
-    benchmarkResults.foreach( x => writer.println(x.getSummary()) )
+    benchmarkResults.foreach( x =>{
+      // Trained models
+        x match {
+          case x:SuccessfulBenchmarkResult =>
+            writer.println(
+              s""" Algorithm: ${x.algorithm.MODEL_NAME}
+                 | Model: ${x.algorithm.getTrainedModelAsString(x.dataset,x.trainedModel)}
+               """.stripMargin
+            )
+          case _ =>
+        }
+      // Metrics
+      writer.println(x.getSummary())
+    })
 
 
     writer.close()

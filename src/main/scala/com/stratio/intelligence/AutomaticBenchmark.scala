@@ -61,7 +61,7 @@ object AutomaticBenchmark extends App {
 
   // Defining models
     val models:Array[BenchmarkModel] = Array(
-      /* new BenchmarkLogisticRegression(),
+      new BenchmarkLogisticRegression(),
       new BenchmarkDecisionTree()
         .setParameters( {
             val params = DTParams()
@@ -69,7 +69,6 @@ object AutomaticBenchmark extends App {
             params
           }
         ),
-      */
       new BenchmarkLMT()
         .setParameters( {
             val params = LMTParams()
@@ -78,6 +77,7 @@ object AutomaticBenchmark extends App {
             params.maxPointsForLocalRegression  = 1000000
             params.minElements = -1
             params.seed = 12
+            params.pruningRatio = 0
             params
           }
         )
@@ -87,10 +87,11 @@ object AutomaticBenchmark extends App {
     abm.run(
       dataAndDescriptionFiles =
         Array(
-          // (datafile2,descriptionfile2)
+          // (datafile1,descriptionfile1)
+           (datafile2,descriptionfile2)
           // (datafile3,descriptionfile3),
           // (datafile4,descriptionfile4),
-          (datafile5,descriptionfile5)
+          // (datafile5,descriptionfile5)
         ),
       outputConf = OutputConf().setFilePath("myoutput.txt"),
       seed = 11,

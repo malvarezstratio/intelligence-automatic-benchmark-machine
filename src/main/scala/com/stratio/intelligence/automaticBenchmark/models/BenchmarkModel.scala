@@ -73,10 +73,11 @@ abstract class BenchmarkModel {
 
           logger.logDebug(metrics.getSummary())
 
-          SuccessfulBenchmarkResult(dataset.fileName, iterNumber, fold, this, metrics, trainingTime)
+          val model = trainedModel
+          SuccessfulBenchmarkResult(dataset, iterNumber, fold, this, model, metrics, trainingTime)
 
         }catch {
-          case e:Exception => FailedBenchmarkResult(dataset.fileName, iterNumber, fold, this, e)
+          case e:Exception => FailedBenchmarkResult(dataset, iterNumber, fold, this, e)
         }
       })
 
@@ -93,7 +94,7 @@ abstract class BenchmarkModel {
 
   def train[T]( dataset:AbmDataset, data:T )
   def predict[T]( data:T ):RDD[(Double,Double)]
-
+  def getTrainedModelAsString( dataset:AbmDataset, model:Any ): String
 
   def getMetrics( predictionsAndLabels:RDD[(Double,Double)] ):AbmMetrics = {
 

@@ -222,44 +222,6 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
     logger.logDebug( "=> Dataframe with categorical features encoded using one hot: ")
     logger.logDebug( abmDataset.df.show() )
   }
-
-  /**
-    * Printing the tree for LMT
-    *
-    *   This function receives the top node of an lmt model and prints the tree structure
-    */
-
-  def printTree(node: NodeLmt, selVars: Array[String]): String = {
-    def printNode(node: NodeLmt, level: Int): String = {
-      if (node.isLeaf) "RL" + node.id + "\n"
-      else {
-        val split = node.split.get
-        val (splitDescriptionLeft, splitDescriptionRight) = {
-          val feat = selVars(split.feature)
-          split.featureType match {
-            case FeatureType.Continuous => {
-              val threshold = split.threshold
-              (feat + " <= " + threshold, feat + " > " + threshold)
-            }
-            case FeatureType.Categorical => {
-              val categories = "{" + split.categories.map(_.toInt).mkString(", ") + "}"
-              (feat + " in " + categories, feat + " not in " + categories)
-            }
-          }
-        }
-        val (left, right) = (node.leftNode.get, node.rightNode.get)
-
-        splitDescriptionLeft +
-          {if (left.isLeaf) ": " else {"\n" + "|   " * level}} +
-          printNode(left, level + 1) +
-          "|   " * (level - 1) +
-          splitDescriptionRight +
-          {if (right.isLeaf) ": " else {"\n" + "|   " * level}} +
-          printNode(right, level + 1)
-      }
-    }
-    "\n" + printNode(node, 1)
-  }
 }
 
 object AutomaticBenchmarkMachine{

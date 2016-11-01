@@ -1,6 +1,6 @@
 package com.stratio.intelligence.automaticBenchmark.results
 
-import com.stratio.intelligence.automaticBenchmark.dataset.Fold
+import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, Fold}
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
 
 abstract class BenchmarkResult{
@@ -8,18 +8,19 @@ abstract class BenchmarkResult{
 }
 
 case class SuccessfulBenchmarkResult (
-  dataset:String,
-  iteration:Int,
-  fold:Fold,
-  algorithm:BenchmarkModel,
-  metrics:AbmMetrics,
-  trainingTime:Double
+                                       dataset:AbmDataset,
+                                       iteration:Int,
+                                       fold:Fold,
+                                       algorithm:BenchmarkModel,
+                                       trainedModel:Any,
+                                       metrics:AbmMetrics,
+                                       trainingTime:Double
 ) extends BenchmarkResult{
 
   def getSummary():String = {
     s""" Benchmark summary => State: SUCCESSFUL
        | ----------------------------------------------------------
-       |    . Dataset: ${dataset}
+       |    . Dataset: ${dataset.fileName}
        |    · Algorithm: ${algorithm.MODEL_NAME}
        |    · Iteration: ${iteration}
        |    · Fold: ${fold.foldNumber}
@@ -31,7 +32,7 @@ case class SuccessfulBenchmarkResult (
 }
 
 case class FailedBenchmarkResult (
-     dataset:String,
+     dataset:AbmDataset,
      iteration:Int,
      fold:Fold,
      algorithm:BenchmarkModel,
@@ -41,7 +42,7 @@ case class FailedBenchmarkResult (
   def getSummary():String = {
     s""" Benchmark summary => State: FAILED
         | ----------------------------------------------------------
-        |    . Dataset: ${dataset}
+        |    . Dataset: ${dataset.fileName}
         |    · Algorithm: ${algorithm.MODEL_NAME}
         |    · Iteration: ${iteration}
         |    · Fold: ${fold.foldNumber}
