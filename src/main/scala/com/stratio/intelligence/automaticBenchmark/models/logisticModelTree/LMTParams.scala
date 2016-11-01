@@ -11,40 +11,72 @@ case class LMTParams() extends ModelParameters{
   //      E.g., depth 0 means 1 leaf node; depth 1 means 1 internal node + 2 leaf nodes. (suggested value: 5)
   // · MaxBins: maximum number of bins used for splitting features (suggested value: 32)
 
-  // Flag for enabling LMT debug information
-  var debugConsole: Boolean = false
-  var numClasses:Int = 2
+  val numClasses:Int = 2
+
+  // Debug
+    private[this] var _debugConsole: Boolean = false
+    def debugConsole: Boolean = _debugConsole
+    def setDebugConsole(value: Boolean): LMTParams = { _debugConsole = value; this }
 
   // Tree params
-  var impurity:String = LMTParams.IMPURITY_GINI
-  var maxDepth:Int    = 5
-  var maxBins:Int     = 32
+    private[this] var _impurity: String = LMTParams.IMPURITY_GINI
+    def impurity: String = _impurity
+    def setImpurity(value: String): LMTParams = { _impurity = value; this }
+
+    private[this] var _maxDepth: Int = 5
+    def maxDepth: Int = _maxDepth;
+    def setMaxDepth(value: Int): LMTParams = { _maxDepth = value; this }
+
+    private[this] var _maxBins: Int = 32
+    def maxBins: Int = _maxBins
+    def setMaxBins(value: Int): LMTParams = { _maxBins = value;this }
 
   // Maximum number of points for doing a local regression (using Weka)
-  var maxPointsForLocalRegression: Int = 10000
+    private[this] var _maxPointsForLocalRegression: Int = 10000
+    def maxPointsForLocalRegression: Int = _maxPointsForLocalRegression
+    def setMaxPointsForLocalRegression(value: Int): LMTParams = { _maxPointsForLocalRegression = value; this }
 
   // Pruning type {validation,folds (CART)}
-  var pruningType:String = LMTParams.PRUNING_TYPE_VALIDATION
+    private[this] var _pruningType: String = LMTParams.PRUNING_TYPE_VALIDATION
+    def pruningType: String = _pruningType
+    def setPruningType(value: String): LMTParams = { _pruningType = value; this }
 
   // Pruning
-  var prune: String = "AUC" // {"AUC", "COST"}
+    private[this] var _prune: String = "AUC" // {"AUC", "COST"}
+    def prune: String = _prune
+    def setPrune(value: String): LMTParams = { _prune = value; this }
     // · Cost function to use if prune type is "COST" -> f(confMatrix)
-    var costFunction: LmtCostFunction = AccuracyCostFunction
+      private[this] var _costFunction: LmtCostFunction = AccuracyCostFunction
+      def costFunction: LmtCostFunction = _costFunction
+      def setCostFunction(value: LmtCostFunction): LMTParams = { _costFunction = value; this }
 
   // Minimum gain required for allowing a new split ->
   //    The combined performance of the LRs in the children is better than the parent's LR performance
-  var pruningRatio:Double = 0.1
+    private[this] var _pruningRatio: Double = 0.1
+    def pruningRatio: Double = _pruningRatio
+    def setPruningRatio(value: Double): LMTParams = { _pruningRatio = value;this }
 
   // TODO - If the number of instances in a node/one of the children ??? is lower, the prune is over
-  var minElements:Int = -1
+    private[this] var _minElements: Int = -1
+    def minElements: Int = _minElements
+    def setMinElements(value: Int): LMTParams = { _minElements = value; this }
 
   // TODO Folds ??
-  var seed:Long = -1
-  var numFolds:Int = 5
-  var weights : scala.Array[scala.Double] = Array(0.8,0.2)
+    private[this] var _seed: Long = -1
+    def seed: Long = _seed
+    def setSeed(value: Long): LMTParams = { _seed = value; this }
 
-  // Number of fold to train different LMTs when Pruning type = folds (CART)
-  var numFoldsCart:Int = 5
+    private[this] var _numFolds: Int = 5
+    def numFolds: Int = _numFolds
+    def setNumFolds(value: Int): LMTParams = { _numFolds = value; this }
+
+    private[this] var _weights: Array[Double] = Array(0.8,0.2)
+    def weights: Array[Double] = _weights
+    def setWeights(value: Array[Double]): LMTParams = { _weights = value; this }
+
+    private[this] var _numFoldsCart: Int = 5
+    def numFoldsCart: Int = _numFoldsCart
+    def setNumFoldsCart(value: Int): LMTParams = { _numFoldsCart = value; this }
 
 }
 

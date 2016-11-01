@@ -13,9 +13,9 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
 class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
 
   // Logging and Debug
-  private val logger = AutomaticBenchmarkMachineLogger
-  def enableDebugMode()  = logger.DEBUGMODE = true
-  def disableDebugMode() = logger.DEBUGMODE = false
+  private val logger = {AutomaticBenchmarkMachineLogger.DEBUGMODE=false; AutomaticBenchmarkMachineLogger}
+  def enableDebugMode()  = { logger.DEBUGMODE = true  }
+  def disableDebugMode() = { logger.DEBUGMODE = false }
 
   // SparkContext
   val sc = sqlContext.sparkContext
@@ -27,9 +27,8 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
            seed: Long,                                        // metrics: Array[String],
            kfolds: Integer,                                   // kfolds is the k for the k-fold CV
            mtimesFolds: Integer = 1,                          // mtimesFolds is the number of times to repeat the complete k-fold CV process independently
-           // It should be replaced by: algorithms: Array[BenchmarkAlgorithm]
            algorithms: Array[BenchmarkModel]
-  ): Unit = {
+  ): Array[BenchmarkResult] = {
 
     // => Parse the description file of each dataset, read the dataset,
     // find out the positive label and whether there are categorical features or not
@@ -92,6 +91,8 @@ class AutomaticBenchmarkMachine( sqlContext: SQLContext ){
     val outputWriter = new OutputWriter(outputConf,datasets,benchmarkResults)
       // Summary to text file
       outputWriter.saveSummaryToFile()
+
+    benchmarkResults
   }
 
   /**  Find out which pre-processing steps are required for the set of algorithms to be run
@@ -227,7 +228,7 @@ object AutomaticBenchmarkMachine{
 
 object AutomaticBenchmarkMachineLogger{
 
-  var DEBUGMODE = false
+  var DEBUGMODE: Boolean = false
 
   def logInfo(msn:String): Unit = println( Console.YELLOW + msn + Console.RESET )
 

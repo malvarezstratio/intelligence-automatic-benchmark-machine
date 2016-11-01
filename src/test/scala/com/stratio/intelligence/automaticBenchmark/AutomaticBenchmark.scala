@@ -3,7 +3,7 @@ package com.stratio.intelligence.automaticBenchmark
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
 import com.stratio.intelligence.automaticBenchmark.models.decisionTree.{BenchmarkDecisionTree, DTParams}
 import com.stratio.intelligence.automaticBenchmark.models.logisticModelTree.{BenchmarkLMT, LMTParams}
-import com.stratio.intelligence.automaticBenchmark.models.logisticRegression.BenchmarkLogisticRegression
+import com.stratio.intelligence.automaticBenchmark.models.logisticRegression.{LRParams, BenchmarkLogisticRegression}
 import com.stratio.intelligence.automaticBenchmark.output.OutputConf
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
@@ -12,7 +12,6 @@ object AutomaticBenchmark extends App {
 
   // TODO - Parametrizar la eliminacion o no de una de las categorias en el One Hot
   // TODO - Generalizar a clasificacion multiclase/regression
-  // TODO - Mejorar los parámetros de los modelos  new ModelParam().setX().setY()...
   // TODO - Incluir el código del LMT en vez del JAR
   // BUg - pima.indians el LMT, dependiendo de cada ejecución, puede funcionar o no. No crece hijos
 
@@ -59,25 +58,19 @@ object AutomaticBenchmark extends App {
 
   // Defining models
     val models:Array[BenchmarkModel] = Array(
-      new BenchmarkLogisticRegression(),
+      new BenchmarkLogisticRegression()
+          .setParameters( LRParams().setFitIntercept(true) ),
       new BenchmarkDecisionTree()
-        .setParameters( {
-            val params = DTParams()
-            params.maxBins = 100
-            params
-          }
-        ),
+        .setParameters( DTParams().setMaxBins(100) ),
       new BenchmarkLMT()
-        .setParameters( {
-            val params = LMTParams()
-            params.maxBins = 100
-            params.debugConsole = true
-            params.maxPointsForLocalRegression  = 1000000
-            params.minElements = -1
-            params.seed = 12
-            params.pruningRatio = 0
-            params
-          }
+        .setParameters(
+            LMTParams()
+              .setMaxBins(100)
+              .setDebugConsole(true)
+              .setMaxPointsForLocalRegression(100000)
+              .setMinElements(-1)
+              .setSeed(12)
+              .setPruningRatio(0)
         )
     )
 
