@@ -35,6 +35,7 @@
     </repositories>
 
     <dependencies>
+        <!-- Scala -->
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
@@ -53,18 +54,21 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.binary.version}</artifactId>
             <version>1.6.2</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-mllib_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Spark CSV library-->
@@ -81,29 +85,26 @@
             <version>0.3</version>
         </dependency>
         <dependency>
-            <groupId>org.pentaho.pentaho-commons</groupId>
-            <artifactId>pentaho-package-manager</artifactId>
-            <version>1.0.11</version>
-        </dependency>
-        <dependency>
-            <groupId>com.googlecode.matrix-toolkits-java</groupId>
-            <artifactId>mtj</artifactId>
-            <version>0.9.14</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.vbmacher</groupId>
-            <artifactId>java-cup-runtime</artifactId>
-            <version>11b</version>
-        </dependency>
-
-        <dependency>
             <groupId>com.stratio.ml</groupId>
             <artifactId>lmt</artifactId>
             <version>0.8</version>
         </dependency>
+
+        <!-- Spark testing -->
+        <dependency>
+            <groupId>com.holdenkarau</groupId>
+            <artifactId>spark-testing-base_${scala.binary.version}</artifactId>
+            <version>${spark.binary.version}_0.4.7</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.clapper</groupId>
+            <artifactId>grizzled-slf4j_${scala.binary.version}</artifactId>
+            <version>1.2.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
-
-
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
@@ -180,6 +181,5 @@
             </plugin>
         </plugins>
     </build>
-
 
 </project>

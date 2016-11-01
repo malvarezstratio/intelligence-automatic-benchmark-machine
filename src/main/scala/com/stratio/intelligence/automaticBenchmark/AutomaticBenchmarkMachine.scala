@@ -1,7 +1,5 @@
 package com.stratio.intelligence.automaticBenchmark
 
-import java.io.{File, PrintWriter}
-
 import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, DatasetReader, Fold}
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
 import com.stratio.intelligence.automaticBenchmark.output.{OutputConf, OutputWriter}
@@ -9,8 +7,6 @@ import com.stratio.intelligence.automaticBenchmark.results.BenchmarkResult
 import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer, StringIndexerModel}
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.mllib.linalg.Vector
-import org.apache.spark.mllib.tree.configuration.FeatureType
-import org.apache.spark.mllib.tree.model.NodeLmt
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SQLContext}
 

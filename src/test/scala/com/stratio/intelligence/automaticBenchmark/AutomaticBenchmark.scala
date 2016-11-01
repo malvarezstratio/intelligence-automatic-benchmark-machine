@@ -1,12 +1,10 @@
-package com.stratio.intelligence
+package com.stratio.intelligence.automaticBenchmark
 
-import com.stratio.intelligence.automaticBenchmark.AutomaticBenchmarkMachine
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
-import com.stratio.intelligence.automaticBenchmark.models.decisionTree.{DTParams, BenchmarkDecisionTree}
-import com.stratio.intelligence.automaticBenchmark.models.logisticModelTree.{LMTParams, BenchmarkLMT}
+import com.stratio.intelligence.automaticBenchmark.models.decisionTree.{BenchmarkDecisionTree, DTParams}
+import com.stratio.intelligence.automaticBenchmark.models.logisticModelTree.{BenchmarkLMT, LMTParams}
 import com.stratio.intelligence.automaticBenchmark.models.logisticRegression.BenchmarkLogisticRegression
 import com.stratio.intelligence.automaticBenchmark.output.OutputConf
-import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -88,12 +86,13 @@ object AutomaticBenchmark extends App {
       dataAndDescriptionFiles =
         Array(
           // (datafile1,descriptionfile1)
-           (datafile2,descriptionfile2)
+           (datafile5,descriptionfile5)
           // (datafile3,descriptionfile3),
           // (datafile4,descriptionfile4),
           // (datafile5,descriptionfile5)
         ),
-      outputConf = OutputConf().setFilePath("myoutput.txt"),
+      outputConf =
+        OutputConf().setFilePath("myoutput.txt").setShowTrainedModel(true),
       seed = 11,
       kfolds = 3,
       mtimesFolds = 1,

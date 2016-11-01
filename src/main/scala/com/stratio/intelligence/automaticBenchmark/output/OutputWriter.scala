@@ -28,7 +28,7 @@ class OutputWriter( outputConf: OutputConf,
     // Writing benchmark results
     benchmarkResults.foreach( x =>{
       // Trained models
-        x match {
+/*        x match {
           case x:SuccessfulBenchmarkResult =>
             writer.println(
               s""" Algorithm: ${x.algorithm.MODEL_NAME}
@@ -36,9 +36,9 @@ class OutputWriter( outputConf: OutputConf,
                """.stripMargin
             )
           case _ =>
-        }
+        }*/
       // Metrics
-      writer.println(x.getSummary())
+      writer.println( x.getSummary( outputConf.showTrainedModel) )
     })
 
 

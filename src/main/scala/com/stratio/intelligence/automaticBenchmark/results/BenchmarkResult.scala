@@ -4,7 +4,7 @@ import com.stratio.intelligence.automaticBenchmark.dataset.{AbmDataset, Fold}
 import com.stratio.intelligence.automaticBenchmark.models.BenchmarkModel
 
 abstract class BenchmarkResult{
-  def getSummary():String
+  def getSummary( showTrainedModel:Boolean ):String
 }
 
 case class SuccessfulBenchmarkResult (
@@ -17,17 +17,26 @@ case class SuccessfulBenchmarkResult (
                                        trainingTime:Double
 ) extends BenchmarkResult{
 
-  def getSummary():String = {
-    s""" Benchmark summary => State: SUCCESSFUL
-       | ----------------------------------------------------------
-       |    . Dataset: ${dataset.fileName}
-       |    · Algorithm: ${algorithm.MODEL_NAME}
-       |    · Iteration: ${iteration}
-       |    · Fold: ${fold.foldNumber}
-       |    · Training time: ${trainingTime}
-       |    · Metrics:
-       |        ${metrics.getSummary().replaceAll("\n","\n\t\t")}
-     """.stripMargin
+  def getSummary( showTrainedModel:Boolean ):String = {
+
+
+    (
+    s"""| Benchmark summary => State: SUCCESSFUL
+        | ----------------------------------------------------------
+        |    . Dataset: ${dataset.fileName}
+        |    · Iteration: ${iteration}
+        |    · Fold: ${fold.foldNumber}
+        |    · Model: ${algorithm.MODEL_NAME}
+    """ + (
+    if( showTrainedModel ) {
+    s"""|    · Trained model: ${algorithm.getTrainedModelAsString(dataset, trainedModel)} """
+    }else{""}
+    ) +
+    s"""|    · Training time: ${trainingTime}
+        |    · Metrics:
+        |        ${metrics.getSummary().replaceAll("\n","\n\t\t")}
+     """
+    ).stripMargin
   }
 }
 
@@ -39,7 +48,7 @@ case class FailedBenchmarkResult (
      exception: Exception
    ) extends BenchmarkResult{
 
-  def getSummary():String = {
+  def getSummary( showTrainedModel:Boolean ):String = {
     s""" Benchmark summary => State: FAILED
         | ----------------------------------------------------------
         |    . Dataset: ${dataset.fileName}
