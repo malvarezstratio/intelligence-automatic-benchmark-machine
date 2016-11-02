@@ -55,20 +55,20 @@ object sythetic_generator extends App {
     sqlContext.createDataFrame(data, newSchema)
   }
 
-  var nH0 = 100000;  var meanH0 = Array(0.25, 0.2);   var stdH0 = Array(0.05d,0.05d);
-  var nH1 = 1000;    var meanH1 = Array(0.25, 0.4);   var stdH1 = Array(0.05d,0.05d);
+  var nH0 = 1000000;  var meanH0 = Array(0.25, 0.2);   var stdH0 = Array(0.05d,0.05d);
+  var nH1 = 10000;    var meanH1 = Array(0.25, 0.4);   var stdH1 = Array(0.05d,0.05d);
   val first_quadrant: DataFrame = getBinaryGaussVariable( nH0, nH1, meanH0, meanH1, stdH0, stdH1  )
 
-  nH0 = 1000;  meanH0 = Array(0.75, 0.15);   stdH0 = Array(0.05d,0.05d);
-  nH1 = 100;    meanH1 = Array(0.6, 0.2);   stdH1 = Array(0.05d,0.05d);
+  nH0 = 10000;  meanH0 = Array(0.75, 0.15);   stdH0 = Array(0.05d,0.05d);
+  nH1 = 1000;    meanH1 = Array(0.6, 0.2);   stdH1 = Array(0.05d,0.05d);
   val second_quadrant: DataFrame = getBinaryGaussVariable( nH0, nH1, meanH0, meanH1, stdH0, stdH1  )
 
-  nH0 = 1000;  meanH0 = Array(0.75, 0.9);   stdH0 = Array(0.05d,0.05d);
-  nH1 = 100000;    meanH1 = Array(0.75, 0.6);   stdH1 = Array(0.05d,0.05d);
+  nH0 = 10000;  meanH0 = Array(0.75, 0.9);   stdH0 = Array(0.05d,0.05d);
+  nH1 = 1000000;    meanH1 = Array(0.75, 0.6);   stdH1 = Array(0.05d,0.05d);
   val third_quadrant: DataFrame = getBinaryGaussVariable( nH0, nH1, meanH0, meanH1, stdH0, stdH1  )
 
-  nH0 = 100;  meanH0 = Array(0.75, 0.9);   stdH0 = Array(0.05d,0.05d);
-  nH1 = 1000;    meanH1 = Array(0.75, 0.6);   stdH1 = Array(0.05d,0.05d);
+  nH0 = 1000;  meanH0 = Array(0.75, 0.9);   stdH0 = Array(0.05d,0.05d);
+  nH1 = 10000;    meanH1 = Array(0.75, 0.6);   stdH1 = Array(0.05d,0.05d);
   val fourth_quadrant: DataFrame = getBinaryGaussVariable( nH0, nH1, meanH0, meanH1, stdH0, stdH1  )
 
   /*first_quadrant.show()
