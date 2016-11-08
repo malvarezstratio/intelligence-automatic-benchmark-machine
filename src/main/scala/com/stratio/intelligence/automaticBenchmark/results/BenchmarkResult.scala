@@ -29,7 +29,8 @@ case class SuccessfulBenchmarkResult (
         |    · Model: ${algorithm.MODEL_NAME}
     """ + (
     if( showTrainedModel ) {
-    s"""|    · Trained model: ${algorithm.getTrainedModelAsString(dataset, trainedModel)} """
+    s"""|    · Trained model: ${algorithm.getTrainedModelAsString(dataset, trainedModel)}
+     """
     }else{""}
     ) +
     s"""|    · Training time: ${trainingTime}

@@ -9,15 +9,15 @@ case class Fold( abmDataset: AbmDataset,
                  trainDf:DataFrame,
                  testDf:DataFrame         ){
 
+  val nT   = trainDf.count()
+  val nC1T = trainDf.where( abmDataset.labelColumn + " = 1.0" ).count()
+  val nC0T = trainDf.where( abmDataset.labelColumn + " = 0.0" ).count()
+  val nt   = testDf.count()
+  val nC1t = testDf.where( abmDataset.labelColumn + " = 1.0" ).count()
+  val nC0t = testDf.where( abmDataset.labelColumn + " = 0.0" ).count()
+
+
   def getSummary():String = {
-
-    val nT   = trainDf.count()
-    val nC1T = trainDf.where( abmDataset.labelColumn + " = 1.0" ).count()
-    val nC0T = trainDf.where( abmDataset.labelColumn + " = 0.0" ).count()
-    val nt   = testDf.count()
-    val nC1t = testDf.where( abmDataset.labelColumn + " = 1.0" ).count()
-    val nC0t = testDf.where( abmDataset.labelColumn + " = 0.0" ).count()
-
     s""" =>Fold Summary
        |   · Dataset: ${abmDataset.fileName}
        |   · Iteration number: ${numIter} · Fold number: ${foldNumber}

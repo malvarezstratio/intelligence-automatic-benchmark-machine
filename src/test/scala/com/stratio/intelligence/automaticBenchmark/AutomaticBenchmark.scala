@@ -79,9 +79,9 @@ object AutomaticBenchmark extends App {
       dataAndDescriptionFiles =
         Array(
           // (datafile1,descriptionfile1)
-           (datafile5,descriptionfile5)
+          // (datafile5,descriptionfile5)
           // (datafile3,descriptionfile3),
-          // (datafile4,descriptionfile4),
+          (datafile4,descriptionfile4)
           // (datafile5,descriptionfile5)
         ),
       outputConf =

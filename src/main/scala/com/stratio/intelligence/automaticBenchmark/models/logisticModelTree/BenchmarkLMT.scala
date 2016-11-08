@@ -40,7 +40,7 @@ class BenchmarkLMT extends BenchmarkModel{
   }
 
   /** Transforms the input fold in order to get the correct data and format for the training/testing method */
-  override def adequateData(dataset: AbmDataset, fold: DataFrame): Any = {
+  override def adequateData( dataset: AbmDataset, fold: DataFrame ): Any = {
 
     // Helper UDF -> Assures than a Vector column is a denseVector
     val toDenseVector = udf( (x:Vector) => x.toDense )
@@ -173,10 +173,11 @@ class BenchmarkLMT extends BenchmarkModel{
     */
 
   def printTree(node: NodeLmt, selVars: Array[String]): String = {
+
     def printNode(node: NodeLmt, level: Int): String = {
       if (node.isLeaf)
         "RL" + node.id + "\n" +
-        s"\tIntercept: ${node.getIntercept()} Betas: ${node.getRegressionWeight().mkString(",")}"
+        s"\tIntercept: ${node.getIntercept()} Betas: ${node.getRegressionWeight().mkString(",")}\n"
       else {
         val split = node.split.get
         val (splitDescriptionLeft, splitDescriptionRight) = {
@@ -203,6 +204,10 @@ class BenchmarkLMT extends BenchmarkModel{
           printNode(right, level + 1)
       }
     }
-    "\n" + printNode(node, 1)
+    try {
+      "\n" + printNode(node, 1)
+    }catch {
+      case _ => "Error printing the LMT trained model."
+    }
   }
 }
